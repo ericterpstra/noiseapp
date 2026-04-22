@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Noise Lab</title>
+    <meta
+      name="description"
+      content="Real-time browser generator for white, pink, brown, blue, violet, green, grey, and fan-like sleep noise."
+    >
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero panel">
+        <div class="hero-copy">
+          <p class="eyebrow">Live synthesis, no prerecorded audio</p>
+          <h1>Noise Lab</h1>
+          <p class="hero-text">
+            Audition seven common noise colors plus a live sleep-fan texture, shape the output with filters and
+            stereo width, and watch the spectrum move while you tune.
+          </p>
+        </div>
+        <div class="hero-actions">
+          <button id="powerButton" class="power-button" type="button">Start Audio</button>
+          <p id="audioStatus" class="status-pill">Idle</p>
+        </div>
+      </header>
+
+      <main class="dashboard">
+        <section class="panel control-panel">
+          <div class="section-heading">
+            <p class="eyebrow">Generator</p>
+            <h2>Core Controls</h2>
+          </div>
+
+          <div class="control-grid">
+            <label class="control control-select">
+              <span>Source</span>
+              <select id="noiseType">
+                <option value="fan">Sleep Fan</option>
+                <option value="white">White</option>
+                <option value="pink">Pink</option>
+                <option value="brown">Brown</option>
+                <option value="blue">Blue</option>
+                <option value="violet">Violet</option>
+                <option value="green">Green</option>
+                <option value="grey">Grey</option>
+              </select>
+            </label>
+
+            <label class="control">
+              <div class="control-label">
+                <span>Output Level</span>
+                <output id="levelValue" for="level">42%</output>
+              </div>
+              <input id="level" type="range" min="0" max="100" value="42">
+            </label>
+
+            <label class="control">
+              <div class="control-label">
+                <span>Stereo Width</span>
+                <output id="widthValue" for="width">100%</output>
+              </div>
+              <input id="width" type="range" min="0" max="200" value="100">
+            </label>
+
+            <label class="control">
+              <div class="control-label">
+                <span>Brightness Tilt</span>
+                <output id="tiltValue" for="tilt">0 dB</output>
+              </div>
+              <input id="tilt" type="range" min="-12" max="12" value="0">
+            </label>
+
+            <label class="control">
+              <div class="control-label">
+                <span>Low Cut</span>
+                <output id="lowCutValue" for="lowCut">20 Hz</output>
+              </div>
+              <input id="lowCut" type="range" min="0" max="100" value="0">
+            </label>
+
+            <label class="control">
+              <div class="control-label">
+                <span>High Cut</span>
+                <output id="highCutValue" for="highCut">20.0 kHz</output>
+              </div>
+              <input id="highCut" type="range" min="0" max="100" value="100">
+            </label>
+          </div>
+        </section>
+
+        <section class="panel insight-panel">
+          <div class="section-heading">
+            <p class="eyebrow">Context</p>
+            <h2>What You’re Hearing</h2>
+          </div>
+
+          <div class="insight-grid">
+            <article class="note-card">
+              <h3 id="colorTitle">Sleep Fan</h3>
+              <p id="colorDescription">
+                A layered fan-style generator with low rumble, a soft motor hum, and muted airflow so it lands
+                closer to a sleep machine than generic static.
+              </p>
+            </article>
+
+            <article class="note-card">
+              <h3>Fine Tuning</h3>
+              <div class="detail-stack">
+                <div id="fanControls" class="detail-group">
+                  <label class="control">
+                    <div class="control-label">
+                      <span>Airflow</span>
+                      <output id="fanAirValue" for="fanAir">55%</output>
+                    </div>
+                    <input id="fanAir" type="range" min="0" max="100" value="55">
+                  </label>
+
+                  <label class="control">
+                    <div class="control-label">
+                      <span>Rumble</span>
+                      <output id="fanRumbleValue" for="fanRumble">65%</output>
+                    </div>
+                    <input id="fanRumble" type="range" min="0" max="100" value="65">
+                  </label>
+
+                  <label class="control">
+                    <div class="control-label">
+                      <span>Hum</span>
+                      <output id="fanHumValue" for="fanHum">52%</output>
+                    </div>
+                    <input id="fanHum" type="range" min="0" max="100" value="52">
+                  </label>
+
+                  <label class="control">
+                    <div class="control-label">
+                      <span>Movement</span>
+                      <output id="fanDriftValue" for="fanDrift">32%</output>
+                    </div>
+                    <input id="fanDrift" type="range" min="0" max="100" value="32">
+                  </label>
+                </div>
+
+                <div id="greenControls" class="detail-group" hidden>
+                  <label class="control">
+                    <div class="control-label">
+                      <span>Green Center</span>
+                      <output id="greenCenterValue" for="greenCenter">800 Hz</output>
+                    </div>
+                    <input id="greenCenter" type="range" min="0" max="100" value="54">
+                  </label>
+
+                  <label class="control">
+                    <div class="control-label">
+                      <span>Green Q</span>
+                      <output id="greenQValue" for="greenQ">1.8</output>
+                    </div>
+                    <input id="greenQ" type="range" min="30" max="600" value="180">
+                  </label>
+                </div>
+
+                <div id="greyControls" class="detail-group" hidden>
+                  <label class="control">
+                    <div class="control-label">
+                      <span>Contour Amount</span>
+                      <output id="greyAmountValue" for="greyAmount">100%</output>
+                    </div>
+                    <input id="greyAmount" type="range" min="0" max="150" value="100">
+                  </label>
+                </div>
+
+                <p id="detailHint" class="detail-hint">
+                  Sleep Fan layers filtered airflow, sub rumble, a soft hum, and slow drift in the browser audio
+                  engine. The classic colors still use live spectral synthesis, and green and grey apply
+                  additional shaping where their definitions are convention-driven rather than perfectly universal.
+                </p>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel visual-panel">
+          <div class="section-heading">
+            <p class="eyebrow">Monitoring</p>
+            <h2>Live Visualizers</h2>
+          </div>
+
+          <div class="canvas-grid">
+            <div class="canvas-card">
+              <div class="canvas-header">
+                <h3>Spectrum</h3>
+                <p>Log-frequency view of the current output.</p>
+              </div>
+              <canvas id="spectrumCanvas" width="960" height="320"></canvas>
+            </div>
+
+            <div class="canvas-card">
+              <div class="canvas-header">
+                <h3>Waveform</h3>
+                <p>Short window of the live signal.</p>
+              </div>
+              <canvas id="scopeCanvas" width="960" height="220"></canvas>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer-copy">
+        Everything you hear is synthesized in the browser with the Web Audio API and generated continuously in
+        real time.
+      </footer>
+    </div>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
