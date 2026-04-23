@@ -34,61 +34,7 @@
             <h2>Core Controls</h2>
           </div>
 
-          <div class="control-grid">
-            <label class="control control-select">
-              <span>Source</span>
-              <select id="noiseType">
-                <option value="fan">Sleep Fan</option>
-                <option value="white">White</option>
-                <option value="pink">Pink</option>
-                <option value="brown">Brown</option>
-                <option value="blue">Blue</option>
-                <option value="violet">Violet</option>
-                <option value="green">Green</option>
-                <option value="grey">Grey</option>
-              </select>
-            </label>
-
-            <label class="control">
-              <div class="control-label">
-                <span>Output Level</span>
-                <output id="levelValue" for="level">42%</output>
-              </div>
-              <input id="level" type="range" min="0" max="100" value="42">
-            </label>
-
-            <label class="control">
-              <div class="control-label">
-                <span>Stereo Width</span>
-                <output id="widthValue" for="width">100%</output>
-              </div>
-              <input id="width" type="range" min="0" max="200" value="100">
-            </label>
-
-            <label class="control">
-              <div class="control-label">
-                <span>Brightness Tilt</span>
-                <output id="tiltValue" for="tilt">0 dB</output>
-              </div>
-              <input id="tilt" type="range" min="-12" max="12" value="0">
-            </label>
-
-            <label class="control">
-              <div class="control-label">
-                <span>Low Cut</span>
-                <output id="lowCutValue" for="lowCut">20 Hz</output>
-              </div>
-              <input id="lowCut" type="range" min="0" max="100" value="0">
-            </label>
-
-            <label class="control">
-              <div class="control-label">
-                <span>High Cut</span>
-                <output id="highCutValue" for="highCut">20.0 kHz</output>
-              </div>
-              <input id="highCut" type="range" min="0" max="100" value="100">
-            </label>
-          </div>
+          <div id="coreControls" class="control-grid"></div>
         </section>
 
         <section class="panel insight-panel">
@@ -109,67 +55,7 @@
             <article class="note-card">
               <h3>Fine Tuning</h3>
               <div class="detail-stack">
-                <div id="fanControls" class="detail-group">
-                  <label class="control">
-                    <div class="control-label">
-                      <span>Airflow</span>
-                      <output id="fanAirValue" for="fanAir">55%</output>
-                    </div>
-                    <input id="fanAir" type="range" min="0" max="100" value="55">
-                  </label>
-
-                  <label class="control">
-                    <div class="control-label">
-                      <span>Rumble</span>
-                      <output id="fanRumbleValue" for="fanRumble">65%</output>
-                    </div>
-                    <input id="fanRumble" type="range" min="0" max="100" value="65">
-                  </label>
-
-                  <label class="control">
-                    <div class="control-label">
-                      <span>Hum</span>
-                      <output id="fanHumValue" for="fanHum">52%</output>
-                    </div>
-                    <input id="fanHum" type="range" min="0" max="100" value="52">
-                  </label>
-
-                  <label class="control">
-                    <div class="control-label">
-                      <span>Movement</span>
-                      <output id="fanDriftValue" for="fanDrift">32%</output>
-                    </div>
-                    <input id="fanDrift" type="range" min="0" max="100" value="32">
-                  </label>
-                </div>
-
-                <div id="greenControls" class="detail-group" hidden>
-                  <label class="control">
-                    <div class="control-label">
-                      <span>Green Center</span>
-                      <output id="greenCenterValue" for="greenCenter">800 Hz</output>
-                    </div>
-                    <input id="greenCenter" type="range" min="0" max="100" value="54">
-                  </label>
-
-                  <label class="control">
-                    <div class="control-label">
-                      <span>Green Q</span>
-                      <output id="greenQValue" for="greenQ">1.8</output>
-                    </div>
-                    <input id="greenQ" type="range" min="30" max="600" value="180">
-                  </label>
-                </div>
-
-                <div id="greyControls" class="detail-group" hidden>
-                  <label class="control">
-                    <div class="control-label">
-                      <span>Contour Amount</span>
-                      <output id="greyAmountValue" for="greyAmount">100%</output>
-                    </div>
-                    <input id="greyAmount" type="range" min="0" max="150" value="100">
-                  </label>
-                </div>
+                <div id="sourceControls" class="detail-stack"></div>
 
                 <p id="detailHint" class="detail-hint">
                   Sleep Fan layers filtered airflow, sub rumble, a soft hum, and slow drift in the browser audio

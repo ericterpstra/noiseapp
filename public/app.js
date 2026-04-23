@@ -1,41 +1,12 @@
-const NOISE_DETAILS = {
-  fan: {
-    title: "Sleep Fan",
-    description:
-      "A layered fan-style generator with low rumble, a soft motor hum, and muted airflow so it lands closer to a sleep machine than generic static.",
-  },
-  white: {
-    title: "White Noise",
-    description: "Equal power per Hz. Flat, bright, and useful as the neutral reference for the other colors.",
-  },
-  pink: {
-    title: "Pink Noise",
-    description:
-      "Power falls about 3 dB per octave, so each octave carries similar energy and the result sounds smoother than white noise.",
-  },
-  brown: {
-    title: "Brown Noise",
-    description:
-      "A stronger low-frequency tilt, roughly 6 dB per octave downward. Heavier, softer, and more weighted toward the bottom end.",
-  },
-  blue: {
-    title: "Blue Noise",
-    description: "The inverse of pink noise in power slope. Energy climbs toward the top end, so it feels airy and sharp.",
-  },
-  violet: {
-    title: "Violet Noise",
-    description: "An even steeper rise toward high frequencies than blue noise, creating a very hiss-forward signal.",
-  },
-  green: {
-    title: "Green Noise",
-    description: "A mid-band focused interpretation of green noise. Use the center and Q controls to sweep where that energy concentrates.",
-  },
-  grey: {
-    title: "Grey Noise",
-    description:
-      "An approximate equal-loudness contour applied to live white noise. The contour amount lets you exaggerate or relax the ear-compensation curve.",
-  },
-};
+import {
+  CONTROL_DEFINITIONS,
+  createDefaultState,
+  parseControlValue,
+} from "./app/config/controls.js";
+import { getScreenDefinition } from "./app/config/screens.js";
+import { SOURCE_DEFINITIONS, getSourceDefinition } from "./app/config/sources.js";
+import { mountScreenControls } from "./app/ui/mount-controls.js";
+import { sliderToLogFrequency } from "./app/ui/formatters.js";
 
 const DEFAULT_GENERATOR_CONFIG = {
   mode: "fan",
@@ -45,37 +16,12 @@ const DEFAULT_GENERATOR_CONFIG = {
   fanDrift: 0.32,
 };
 
+const screen = getScreenDefinition();
+
 const controls = {
+  ...mountScreenControls(document, screen),
   powerButton: document.querySelector("#powerButton"),
   audioStatus: document.querySelector("#audioStatus"),
-  noiseType: document.querySelector("#noiseType"),
-  level: document.querySelector("#level"),
-  levelValue: document.querySelector("#levelValue"),
-  width: document.querySelector("#width"),
-  widthValue: document.querySelector("#widthValue"),
-  tilt: document.querySelector("#tilt"),
-  tiltValue: document.querySelector("#tiltValue"),
-  lowCut: document.querySelector("#lowCut"),
-  lowCutValue: document.querySelector("#lowCutValue"),
-  highCut: document.querySelector("#highCut"),
-  highCutValue: document.querySelector("#highCutValue"),
-  fanControls: document.querySelector("#fanControls"),
-  fanAir: document.querySelector("#fanAir"),
-  fanAirValue: document.querySelector("#fanAirValue"),
-  fanRumble: document.querySelector("#fanRumble"),
-  fanRumbleValue: document.querySelector("#fanRumbleValue"),
-  fanHum: document.querySelector("#fanHum"),
-  fanHumValue: document.querySelector("#fanHumValue"),
-  fanDrift: document.querySelector("#fanDrift"),
-  fanDriftValue: document.querySelector("#fanDriftValue"),
-  greenControls: document.querySelector("#greenControls"),
-  greenCenter: document.querySelector("#greenCenter"),
-  greenCenterValue: document.querySelector("#greenCenterValue"),
-  greenQ: document.querySelector("#greenQ"),
-  greenQValue: document.querySelector("#greenQValue"),
-  greyControls: document.querySelector("#greyControls"),
-  greyAmount: document.querySelector("#greyAmount"),
-  greyAmountValue: document.querySelector("#greyAmountValue"),
   colorTitle: document.querySelector("#colorTitle"),
   colorDescription: document.querySelector("#colorDescription"),
   detailHint: document.querySelector("#detailHint"),
@@ -83,37 +29,25 @@ const controls = {
   scopeCanvas: document.querySelector("#scopeCanvas"),
 };
 
-const appState = {
-  noiseType: "fan",
-  level: 42,
-  width: 100,
-  tilt: 0,
-  lowCut: 0,
-  highCut: 100,
-  fanAir: 55,
-  fanRumble: 65,
-  fanHum: 52,
-  fanDrift: 32,
-  greenCenter: 54,
-  greenQ: 180,
-  greyAmount: 100,
-};
+const appState = createDefaultState();
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
-function sliderToLogFrequency(value, min, max) {
-  const ratio = value / 100;
-  return min * (max / min) ** ratio;
-}
-
-function formatFrequency(value) {
-  if (value >= 1000) {
-    return `${(value / 1000).toFixed(value >= 10000 ? 1 : 2).replace(/\.0$/, "")} kHz`;
+function setAudioStatus(text, state) {
+  if (!controls.audioStatus) {
+    return;
   }
 
-  return `${Math.round(value)} Hz`;
+  controls.audioStatus.textContent = text;
+  controls.audioStatus.dataset.state = state;
+}
+
+function setPowerButtonText(text) {
+  if (controls.powerButton) {
+    controls.powerButton.textContent = text;
+  }
 }
 
 function coefficientForCutoff(frequency, sampleRate) {
@@ -313,22 +247,6 @@ function createScriptProcessorNoiseSource(context) {
   };
 }
 
-function describeDetailMode(noiseType) {
-  if (noiseType === "fan") {
-    return "Sleep Fan layers filtered airflow, sub rumble, a soft hum, and slow drift so it behaves more like a small room fan or sleep machine than filtered static.";
-  }
-
-  if (noiseType === "green") {
-    return "Green uses a band-pass focus on live white noise so you can sweep the center band rather than locking into one arbitrary definition.";
-  }
-
-  if (noiseType === "grey") {
-    return "Grey noise is modeled as a live white-noise source passed through an approximate equal-loudness compensation curve.";
-  }
-
-  return "White, pink, brown, blue, and violet use live spectral synthesis in the browser audio engine. Green and grey add browser-side shaping where the underlying definition varies by convention.";
-}
-
 class NoiseLab {
   constructor() {
     this.context = null;
@@ -393,11 +311,10 @@ class NoiseLab {
   }
 
   getGeneratorConfig() {
-    const sourceMode =
-      appState.noiseType === "green" || appState.noiseType === "grey" ? "white" : appState.noiseType;
+    const source = getSourceDefinition(appState.noiseType);
 
     return {
-      mode: sourceMode,
+      mode: source.generatorMode,
       fanAir: appState.fanAir / 100,
       fanRumble: appState.fanRumble / 100,
       fanHum: appState.fanHum / 100,
@@ -460,9 +377,8 @@ class NoiseLab {
     }
 
     await this.context.resume();
-    controls.audioStatus.textContent = "Running";
-    controls.audioStatus.dataset.state = "running";
-    controls.powerButton.textContent = "Pause Audio";
+    setAudioStatus("Running", "running");
+    setPowerButtonText("Pause Audio");
     this.startVisualizers();
     this.applyState();
   }
@@ -475,9 +391,8 @@ class NoiseLab {
     }
 
     await this.context.suspend();
-    controls.audioStatus.textContent = "Paused";
-    controls.audioStatus.dataset.state = "paused";
-    controls.powerButton.textContent = "Resume Audio";
+    setAudioStatus("Paused", "paused");
+    setPowerButtonText("Resume Audio");
   }
 
   async initialize() {
@@ -632,26 +547,28 @@ class NoiseLab {
     disconnectSafely(this.greyHighShelf);
     disconnectSafely(this.greyTrim);
 
-    if (appState.noiseType === "green") {
+    const route = getSourceDefinition(appState.noiseType).route;
+
+    if (route === "green") {
       sourceNode.connect(this.greenBandpass);
       this.greenBandpass.connect(this.greenTrim);
       this.greenTrim.connect(this.globalInput);
-      this.routingMode = "green";
+      this.routingMode = route;
       return;
     }
 
-    if (appState.noiseType === "grey") {
+    if (route === "grey") {
       sourceNode.connect(this.greyLowShelf);
       this.greyLowShelf.connect(this.greyDip);
       this.greyDip.connect(this.greyHighShelf);
       this.greyHighShelf.connect(this.greyTrim);
       this.greyTrim.connect(this.globalInput);
-      this.routingMode = "grey";
+      this.routingMode = route;
       return;
     }
 
     sourceNode.connect(this.globalInput);
-    this.routingMode = "direct";
+    this.routingMode = route;
   }
 
   setWidth(widthPercent) {
@@ -680,11 +597,9 @@ class NoiseLab {
     const currentTime = this.context.currentTime;
     this.noiseSource.setConfig(this.getGeneratorConfig());
 
-    if (
-      (appState.noiseType === "green" && this.routingMode !== "green") ||
-      (appState.noiseType === "grey" && this.routingMode !== "grey") ||
-      (!["green", "grey"].includes(appState.noiseType) && this.routingMode !== "direct")
-    ) {
+    const source = getSourceDefinition(appState.noiseType);
+
+    if (this.routingMode !== source.route) {
       this.reconnectColorChain();
     }
 
@@ -727,6 +642,10 @@ class NoiseLab {
 
     const spectrumCanvas = controls.spectrumCanvas;
     const scopeCanvas = controls.scopeCanvas;
+
+    if (!spectrumCanvas || !scopeCanvas) {
+      return;
+    }
     const spectrumContext = spectrumCanvas.getContext("2d");
     const scopeContext = scopeCanvas.getContext("2d");
 
@@ -842,71 +761,73 @@ function drawScope(context, canvas, scopeData) {
 }
 
 function updateLabels() {
-  controls.levelValue.textContent = `${appState.level}%`;
-  controls.widthValue.textContent = `${appState.width}%`;
-  controls.tiltValue.textContent = `${appState.tilt > 0 ? "+" : ""}${appState.tilt} dB`;
-  controls.lowCutValue.textContent = formatFrequency(sliderToLogFrequency(appState.lowCut, 20, 1500));
-  controls.highCutValue.textContent = formatFrequency(sliderToLogFrequency(appState.highCut, 1200, 20000));
-  controls.fanAirValue.textContent = `${appState.fanAir}%`;
-  controls.fanRumbleValue.textContent = `${appState.fanRumble}%`;
-  controls.fanHumValue.textContent = `${appState.fanHum}%`;
-  controls.fanDriftValue.textContent = `${appState.fanDrift}%`;
-  controls.greenCenterValue.textContent = formatFrequency(sliderToLogFrequency(appState.greenCenter, 180, 4200));
-  controls.greenQValue.textContent = (appState.greenQ / 100).toFixed(1);
-  controls.greyAmountValue.textContent = `${appState.greyAmount}%`;
+  for (const control of CONTROL_DEFINITIONS) {
+    if (!control.formatValue) {
+      continue;
+    }
+
+    const output = controls[`${control.id}Value`];
+
+    if (output) {
+      output.textContent = control.formatValue(appState[control.id]);
+    }
+  }
 }
 
 function updateText() {
-  const detail = NOISE_DETAILS[appState.noiseType];
-  controls.colorTitle.textContent = detail.title;
-  controls.colorDescription.textContent = detail.description;
-  controls.detailHint.textContent = describeDetailMode(appState.noiseType);
+  const source = getSourceDefinition(appState.noiseType);
 
-  controls.fanControls.hidden = appState.noiseType !== "fan";
-  controls.greenControls.hidden = appState.noiseType !== "green";
-  controls.greyControls.hidden = appState.noiseType !== "grey";
+  if (controls.colorTitle) {
+    controls.colorTitle.textContent = source.title;
+  }
+
+  if (controls.colorDescription) {
+    controls.colorDescription.textContent = source.description;
+  }
+
+  if (controls.detailHint) {
+    controls.detailHint.textContent = source.detail;
+  }
+
+  for (const sourceDefinition of SOURCE_DEFINITIONS) {
+    const group = controls[`${sourceDefinition.id}Controls`];
+
+    if (group) {
+      group.hidden = sourceDefinition.id !== source.id;
+    }
+  }
 }
 
 const lab = new NoiseLab();
 
-controls.powerButton.addEventListener("click", async () => {
-  try {
-    if (lab.context?.state === "running") {
-      await lab.stop();
-    } else {
-      await lab.start();
+if (controls.powerButton) {
+  controls.powerButton.addEventListener("click", async () => {
+    try {
+      if (lab.context?.state === "running") {
+        await lab.stop();
+      } else {
+        await lab.start();
+      }
+    } catch (error) {
+      setAudioStatus(error instanceof Error ? error.message : "Unable to start audio", "error");
+      setPowerButtonText("Start Audio");
     }
-  } catch (error) {
-    controls.audioStatus.textContent = error instanceof Error ? error.message : "Unable to start audio";
-    controls.audioStatus.dataset.state = "error";
-    controls.powerButton.textContent = "Start Audio";
+  });
+}
+
+for (const control of CONTROL_DEFINITIONS) {
+  const input = controls[control.id];
+
+  if (!input) {
+    continue;
   }
-});
 
-const bindings = [
-  ["noiseType", (value) => value],
-  ["level", Number],
-  ["width", Number],
-  ["tilt", Number],
-  ["lowCut", Number],
-  ["highCut", Number],
-  ["fanAir", Number],
-  ["fanRumble", Number],
-  ["fanHum", Number],
-  ["fanDrift", Number],
-  ["greenCenter", Number],
-  ["greenQ", Number],
-  ["greyAmount", Number],
-];
-
-for (const [key, parser] of bindings) {
-  controls[key].addEventListener("input", (event) => {
-    appState[key] = parser(event.currentTarget.value);
+  input.addEventListener("input", (event) => {
+    appState[control.id] = parseControlValue(control, event.currentTarget.value);
     lab.applyState();
   });
 }
 
-controls.audioStatus.textContent = "Idle";
-controls.audioStatus.dataset.state = "idle";
+setAudioStatus("Idle", "idle");
 updateLabels();
 updateText();
