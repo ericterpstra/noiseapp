@@ -1,13 +1,17 @@
+import {
+  DEFAULT_GENERATOR_CONFIG,
+  FAN_AIR_BROWN_MIX,
+  FAN_RUMBLE_FILTERS,
+  fanAirLevel,
+  fanHumFrequency,
+  fanHumLevel,
+  fanRumbleLevel,
+} from "./app/audio/tone-shaping.js";
+
 class ColoredNoiseProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
-    this.config = {
-      mode: "white",
-      fanAir: 0.55,
-      fanRumble: 0.65,
-      fanHum: 0.52,
-      fanDrift: 0.32,
-    };
+    this.config = { ...DEFAULT_GENERATOR_CONFIG, mode: "white" };
     this.channelStates = [];
 
     this.port.onmessage = (event) => {
@@ -55,8 +59,8 @@ class ColoredNoiseProcessor extends AudioWorkletProcessor {
         phaseOffset: Math.random() * Math.PI * 2,
         airCoeff1: this.coefficientForCutoff(700),
         airCoeff2: this.coefficientForCutoff(420),
-        rumbleCoeff1: this.coefficientForCutoff(70),
-        rumbleCoeff2: this.coefficientForCutoff(32),
+        rumbleCoeff1: this.coefficientForCutoff(FAN_RUMBLE_FILTERS.firstCutoff),
+        rumbleCoeff2: this.coefficientForCutoff(FAN_RUMBLE_FILTERS.secondCutoff),
       };
     }
 
@@ -95,12 +99,13 @@ class ColoredNoiseProcessor extends AudioWorkletProcessor {
   generateFan(state, white) {
     const pink = this.generatePink(state, white);
     const brown = this.generateBrown(state, white);
-    const fanAir = this.config.fanAir ?? 0.55;
-    const fanRumble = this.config.fanRumble ?? 0.65;
-    const fanHum = this.config.fanHum ?? 0.52;
-    const fanDrift = this.config.fanDrift ?? 0.32;
+    const fanAir = this.config.fanAir ?? DEFAULT_GENERATOR_CONFIG.fanAir;
+    const fanRumble = this.config.fanRumble ?? DEFAULT_GENERATOR_CONFIG.fanRumble;
+    const fanHum = this.config.fanHum ?? DEFAULT_GENERATOR_CONFIG.fanHum;
+    const fanHumPitch = this.config.fanHumPitch ?? DEFAULT_GENERATOR_CONFIG.fanHumPitch;
+    const fanDrift = this.config.fanDrift ?? DEFAULT_GENERATOR_CONFIG.fanDrift;
 
-    const airSource = pink * 0.82 + brown * 0.18;
+    const airSource = pink * (1 - FAN_AIR_BROWN_MIX) + brown * FAN_AIR_BROWN_MIX;
     state.air1 += state.airCoeff1 * (airSource - state.air1);
     state.air2 += state.airCoeff2 * (state.air1 - state.air2);
     const air = state.air2;
@@ -132,7 +137,12 @@ class ColoredNoiseProcessor extends AudioWorkletProcessor {
     const motion =
       Math.sin(state.motionPhase + state.phaseOffset) * 0.6 +
       Math.sin(state.flutterPhase * 1.9 + state.phaseOffset * 0.37) * 0.4;
-    const humFrequency = 92 + (state.drift * 4.5 + motion * 2.2) * fanDrift;
+    const humFrequency = fanHumFrequency({
+      fanHumPitch,
+      fanDrift,
+      drift: state.drift,
+      motion,
+    });
 
     state.humPhase += (2 * Math.PI * humFrequency) / sampleRate;
     if (state.humPhase > Math.PI * 2) {
@@ -144,9 +154,9 @@ class ColoredNoiseProcessor extends AudioWorkletProcessor {
       Math.sin(state.humPhase * 2.01 + 0.4) * 0.18 +
       Math.sin(state.humPhase * 3.97 + 1.1) * 0.05;
     const bedMotion = 1 + fanDrift * (state.drift * 0.09 + motion * 0.06);
-    const airLevel = 0.12 + fanAir * 0.22;
-    const rumbleLevel = 0.18 + fanRumble * 0.55;
-    const humLevel = 0.04 + fanHum * 0.16;
+    const airLevel = fanAirLevel(fanAir);
+    const rumbleLevel = fanRumbleLevel(fanRumble);
+    const humLevel = fanHumLevel(fanHum);
 
     return (air * airLevel + rumble * rumbleLevel) * bedMotion + humWave * humLevel;
   }

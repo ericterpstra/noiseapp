@@ -26,6 +26,7 @@ test("control schema owns defaults and formatting for current knobs", () => {
     fanAir: 55,
     fanRumble: 65,
     fanHum: 52,
+    fanHumPitch: 92,
     fanDrift: 32,
     greenCenter: 54,
     greenQ: 180,
@@ -33,6 +34,7 @@ test("control schema owns defaults and formatting for current knobs", () => {
   });
 
   assert.equal(getControlDefinition("tilt").formatValue(4), "+4 dB");
+  assert.equal(getControlDefinition("fanHumPitch").formatValue(45), "45 Hz");
   assert.equal(getControlDefinition("greenQ").formatValue(180), "1.8");
   assert.equal(getControlDefinition("lowCut").formatValue(0), "20 Hz");
   assert.equal(getControlDefinition("highCut").formatValue(100), "20 kHz");

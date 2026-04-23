@@ -20,7 +20,7 @@ export const SOURCE_DEFINITIONS = Object.freeze(
         "A layered fan-style generator with low rumble, a soft motor hum, and muted airflow so it lands closer to a sleep machine than generic static.",
       detail:
         "Sleep Fan layers filtered airflow, sub rumble, a soft hum, and slow drift so it behaves more like a small room fan or sleep machine than filtered static.",
-      controls: ["fanAir", "fanRumble", "fanHum", "fanDrift"],
+      controls: ["fanAir", "fanRumble", "fanHum", "fanHumPitch", "fanDrift"],
       generatorMode: "fan",
       route: "direct",
     },

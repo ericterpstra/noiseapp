@@ -3,18 +3,20 @@ import {
   createDefaultState,
   parseControlValue,
 } from "./app/config/controls.js";
+import {
+  DEFAULT_GENERATOR_CONFIG,
+  FAN_AIR_BROWN_MIX,
+  FAN_RUMBLE_FILTERS,
+  fanAirLevel,
+  fanHumFrequency,
+  fanHumLevel,
+  fanRumbleLevel,
+  greenTrimGainForQ,
+} from "./app/audio/tone-shaping.js";
 import { getScreenDefinition } from "./app/config/screens.js";
 import { SOURCE_DEFINITIONS, getSourceDefinition } from "./app/config/sources.js";
 import { mountScreenControls } from "./app/ui/mount-controls.js";
 import { sliderToLogFrequency } from "./app/ui/formatters.js";
-
-const DEFAULT_GENERATOR_CONFIG = {
-  mode: "fan",
-  fanAir: 0.55,
-  fanRumble: 0.65,
-  fanHum: 0.52,
-  fanDrift: 0.32,
-};
 
 const screen = getScreenDefinition();
 
@@ -94,8 +96,8 @@ function ensureStateCoefficients(state, sampleRate) {
   state.sampleRate = sampleRate;
   state.airCoeff1 = coefficientForCutoff(700, sampleRate);
   state.airCoeff2 = coefficientForCutoff(420, sampleRate);
-  state.rumbleCoeff1 = coefficientForCutoff(70, sampleRate);
-  state.rumbleCoeff2 = coefficientForCutoff(32, sampleRate);
+  state.rumbleCoeff1 = coefficientForCutoff(FAN_RUMBLE_FILTERS.firstCutoff, sampleRate);
+  state.rumbleCoeff2 = coefficientForCutoff(FAN_RUMBLE_FILTERS.secondCutoff, sampleRate);
   state.driftCounter = Math.floor(sampleRate * (0.35 + Math.random() * 0.4));
   state.coefficientsReady = true;
 }
@@ -137,9 +139,10 @@ function generateFanSample(state, white, config, sampleRate) {
   const fanAir = config.fanAir ?? DEFAULT_GENERATOR_CONFIG.fanAir;
   const fanRumble = config.fanRumble ?? DEFAULT_GENERATOR_CONFIG.fanRumble;
   const fanHum = config.fanHum ?? DEFAULT_GENERATOR_CONFIG.fanHum;
+  const fanHumPitch = config.fanHumPitch ?? DEFAULT_GENERATOR_CONFIG.fanHumPitch;
   const fanDrift = config.fanDrift ?? DEFAULT_GENERATOR_CONFIG.fanDrift;
 
-  const airSource = pink * 0.82 + brown * 0.18;
+  const airSource = pink * (1 - FAN_AIR_BROWN_MIX) + brown * FAN_AIR_BROWN_MIX;
   state.air1 += state.airCoeff1 * (airSource - state.air1);
   state.air2 += state.airCoeff2 * (state.air1 - state.air2);
   const air = state.air2;
@@ -170,7 +173,12 @@ function generateFanSample(state, white, config, sampleRate) {
   const motion =
     Math.sin(state.motionPhase + state.phaseOffset) * 0.6 +
     Math.sin(state.flutterPhase * 1.9 + state.phaseOffset * 0.37) * 0.4;
-  const humFrequency = 92 + (state.drift * 4.5 + motion * 2.2) * fanDrift;
+  const humFrequency = fanHumFrequency({
+    fanHumPitch,
+    fanDrift,
+    drift: state.drift,
+    motion,
+  });
 
   state.humPhase += (2 * Math.PI * humFrequency) / sampleRate;
   if (state.humPhase > Math.PI * 2) {
@@ -182,9 +190,9 @@ function generateFanSample(state, white, config, sampleRate) {
     Math.sin(state.humPhase * 2.01 + 0.4) * 0.18 +
     Math.sin(state.humPhase * 3.97 + 1.1) * 0.05;
   const bedMotion = 1 + fanDrift * (state.drift * 0.09 + motion * 0.06);
-  const airLevel = 0.12 + fanAir * 0.22;
-  const rumbleLevel = 0.18 + fanRumble * 0.55;
-  const humLevel = 0.04 + fanHum * 0.16;
+  const airLevel = fanAirLevel(fanAir);
+  const rumbleLevel = fanRumbleLevel(fanRumble);
+  const humLevel = fanHumLevel(fanHum);
 
   return (air * airLevel + rumble * rumbleLevel) * bedMotion + humWave * humLevel;
 }
@@ -318,6 +326,7 @@ class NoiseLab {
       fanAir: appState.fanAir / 100,
       fanRumble: appState.fanRumble / 100,
       fanHum: appState.fanHum / 100,
+      fanHumPitch: appState.fanHumPitch,
       fanDrift: appState.fanDrift / 100,
     };
   }
@@ -626,7 +635,7 @@ class NoiseLab {
     const greenQ = clamp(appState.greenQ / 100, 0.3, 6);
     this.greenBandpass.frequency.setTargetAtTime(greenCenter, currentTime, 0.03);
     this.greenBandpass.Q.setTargetAtTime(greenQ, currentTime, 0.03);
-    this.greenTrim.gain.setTargetAtTime(1.9, currentTime, 0.03);
+    this.greenTrim.gain.setTargetAtTime(greenTrimGainForQ(greenQ), currentTime, 0.03);
 
     const greyAmount = clamp(appState.greyAmount / 100, 0, 1.5);
     this.greyLowShelf.gain.setTargetAtTime(12 * greyAmount, currentTime, 0.03);

@@ -26,6 +26,7 @@ npm test
 - `server.mjs`: minimal static file server for the `public/` directory.
 - `public/index.html`: the current one-screen UI shell.
 - `public/app.js`: application bootstrap, state coordination, audio graph setup, and visualizers.
+- `public/app/audio/`: shared audio parameter helpers used by both the main-thread fallback and the AudioWorklet where practical.
 - `public/app/config/`: source definitions, control schema, and screen definitions used to mount the current UI.
 - `public/app/ui/`: shared UI helpers such as control mounting and value formatting.
 - `public/noise-generator.worklet.js`: AudioWorklet DSP implementation.
@@ -37,7 +38,8 @@ npm test
 1. `server.mjs` serves the static frontend.
 2. `public/app.js` mounts the page controls from config, owns the mutable app state, creates the audio graph, and draws the visualizers.
 3. The generator prefers `AudioWorkletNode` and falls back to `ScriptProcessorNode` when needed.
-4. Green and grey are implemented as post-processing chains over a white-noise source; the other colors are synthesized directly.
+4. Shared fan/green parameter helpers live in `public/app/audio/tone-shaping.js`; the core sample generation still exists in both the fallback and worklet.
+5. Green and grey are implemented as post-processing chains over a white-noise source; the other colors are synthesized directly.
 
 ## Review Summary
 
@@ -46,7 +48,7 @@ The app is small, readable, and easy to run. The first schema slice removes the 
 ### Main Maintainability Risks
 
 1. DSP logic is duplicated in `public/app.js` and `public/noise-generator.worklet.js`.
-   The pink, brown, fan, blue, and violet generators exist in two places. Any new noise mode or parameter can drift unless both implementations are updated together.
+   The pink, brown, fan, blue, and violet generators exist in two places. Shared fan gain/pitch constants now live in `public/app/audio/tone-shaping.js`, but the sample algorithms can still drift unless they are extracted or covered more deeply.
 
 2. Audio parameter mapping is still concentrated in `public/app.js`.
    Controls now have a schema for defaults, parsing, formatting, and UI mounting, but audio parameter application still happens imperatively inside `NoiseLab.applyState()`.
@@ -165,7 +167,7 @@ This does not need a heavy framework. Even a small browser-oriented test setup w
 1. Extract pure helpers from `public/app.js` into small modules without changing behavior. Started with value formatters.
 2. Move source descriptions and per-source control membership into a shared source registry. Started in `public/app/config/sources.js`.
 3. Move control definitions into a control schema and render the current screen from that schema. Started in `public/app/config/controls.js`, `public/app/config/screens.js`, and `public/app/ui/mount-controls.js`.
-4. Move audio parameter mapping out of `NoiseLab.applyState()` and into one mapping layer.
+4. Move the remaining audio parameter mapping out of `NoiseLab.applyState()` and into one mapping layer. Started with `public/app/audio/tone-shaping.js`.
 5. Split `NoiseLab` into an audio engine and a UI/controller layer.
 6. Extract shared DSP code so the worklet and fallback stop diverging.
 7. Add route or tab support on top of the schema/store model.

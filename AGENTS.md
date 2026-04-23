@@ -55,10 +55,11 @@ The first incremental schema slice now lives under `public/app/`:
 - `public/app/config/sources.js`: source copy, source-specific control membership, generator mode, and current route.
 - `public/app/config/controls.js`: control labels, input metadata, defaults, parsers, and value formatters.
 - `public/app/config/screens.js`: current screen control regions.
+- `public/app/audio/tone-shaping.js`: shared fan and green parameter helpers used by `public/app.js` and `public/noise-generator.worklet.js`.
 - `public/app/ui/mount-controls.js`: shared DOM mounting for configured controls.
 - `public/app/ui/formatters.js`: pure value formatting and slider-to-frequency mapping helpers.
 
-`public/app.js` still owns app state coordination, audio graph setup, parameter application, and visualizers. Treat that as the next boundary to shrink rather than a pattern to extend.
+`public/app.js` still owns app state coordination, audio graph setup, most parameter application, and visualizers. Treat that as the next boundary to shrink rather than a pattern to extend.
 
 ## Adding a New Control
 
