@@ -15,8 +15,8 @@ export function formatPercent(value) {
   return `${value}%`;
 }
 
-export function formatSignedDecibels(value) {
-  return `${value > 0 ? "+" : ""}${value} dB`;
+export function formatOptionalPercent(value) {
+  return value <= 0 ? "Off" : formatPercent(value);
 }
 
 export function formatLowCut(value) {
@@ -25,12 +25,4 @@ export function formatLowCut(value) {
 
 export function formatHighCut(value) {
   return formatFrequency(sliderToLogFrequency(value, 1200, 20000));
-}
-
-export function formatGreenCenter(value) {
-  return formatFrequency(sliderToLogFrequency(value, 180, 4200));
-}
-
-export function formatQ(value) {
-  return (value / 100).toFixed(1);
 }

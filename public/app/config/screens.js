@@ -2,12 +2,9 @@ function freezeScreen(screen) {
   return Object.freeze({
     ...screen,
     regions: Object.freeze({
-      coreControls: Object.freeze({
-        ...screen.regions.coreControls,
-        controls: Object.freeze([...screen.regions.coreControls.controls]),
-      }),
-      sourceControls: Object.freeze({
-        ...screen.regions.sourceControls,
+      controls: Object.freeze({
+        ...screen.regions.controls,
+        controls: Object.freeze([...screen.regions.controls.controls]),
       }),
     }),
   });
@@ -20,12 +17,21 @@ export const SCREEN_DEFINITIONS = Object.freeze(
     {
       id: "generator",
       regions: {
-        coreControls: {
-          selector: "#coreControls",
-          controls: ["noiseType", "level", "width", "tilt", "lowCut", "highCut"],
-        },
-        sourceControls: {
-          selector: "#sourceControls",
+        controls: {
+          selector: "#toneControls",
+          controls: [
+            "level",
+            "greenMix",
+            "fanAir",
+            "fanRumble",
+            "fanHum",
+            "fanHumPitch",
+            "fanDrift",
+            "warmth",
+            "lowCut",
+            "highCut",
+            "width",
+          ],
         },
       },
     },

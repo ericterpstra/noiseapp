@@ -3,22 +3,22 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Noise Lab</title>
+    <title>Sleep Tone</title>
     <meta
       name="description"
-      content="Real-time browser generator for white, pink, brown, blue, violet, green, grey, and fan-like sleep noise."
+      content="Real-time browser sleep tone generator with a fan-like bed, optional green-noise layer, and tone-shaping controls."
     >
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
     <div class="page-shell">
-      <header class="hero panel">
+      <header class="hero">
         <div class="hero-copy">
           <p class="eyebrow">Live synthesis, no prerecorded audio</p>
-          <h1>Noise Lab</h1>
+          <h1>Sleep Tone</h1>
           <p class="hero-text">
-            Audition seven common noise colors plus a live sleep-fan texture, shape the output with filters and
-            stereo width, and watch the spectrum move while you tune.
+            Shape a continuous fan-style sleep tone with low rumble, soft hum, a darker high-cut range, and an
+            optional green-noise layer.
           </p>
         </div>
         <div class="hero-actions">
@@ -28,74 +28,38 @@
       </header>
 
       <main class="dashboard">
-        <section class="panel control-panel">
+        <section class="control-panel" aria-labelledby="toneHeading">
           <div class="section-heading">
             <p class="eyebrow">Generator</p>
-            <h2>Core Controls</h2>
+            <h2 id="toneHeading">Tone Controls</h2>
           </div>
 
-          <div id="coreControls" class="control-grid"></div>
+          <div id="toneControls" class="control-grid"></div>
         </section>
 
-        <section class="panel insight-panel">
-          <div class="section-heading">
-            <p class="eyebrow">Context</p>
-            <h2>What You’re Hearing</h2>
-          </div>
+        <section class="insight-panel" aria-label="Tone context">
+          <article class="note-card">
+            <p class="eyebrow">Current Tone</p>
+            <h2 id="colorTitle">Sleep Tone</h2>
+            <p id="colorDescription">
+              A layered sleep tone with fan-like airflow, low rumble, soft hum, and an optional green-noise bed for
+              a deeper ambient texture.
+            </p>
+          </article>
 
-          <div class="insight-grid">
-            <article class="note-card">
-              <h3 id="colorTitle">Sleep Fan</h3>
-              <p id="colorDescription">
-                A layered fan-style generator with low rumble, a soft motor hum, and muted airflow so it lands
-                closer to a sleep machine than generic static.
-              </p>
-            </article>
-
-            <article class="note-card">
-              <h3>Fine Tuning</h3>
-              <div class="detail-stack">
-                <div id="sourceControls" class="detail-stack"></div>
-
-                <p id="detailHint" class="detail-hint">
-                  Sleep Fan layers filtered airflow, sub rumble, a soft hum, and slow drift in the browser audio
-                  engine. The classic colors still use live spectral synthesis, and green and grey apply
-                  additional shaping where their definitions are convention-driven rather than perfectly universal.
-                </p>
-              </div>
-            </article>
-          </div>
-        </section>
-
-        <section class="panel visual-panel">
-          <div class="section-heading">
-            <p class="eyebrow">Monitoring</p>
-            <h2>Live Visualizers</h2>
-          </div>
-
-          <div class="canvas-grid">
-            <div class="canvas-card">
-              <div class="canvas-header">
-                <h3>Spectrum</h3>
-                <p>Log-frequency view of the current output.</p>
-              </div>
-              <canvas id="spectrumCanvas" width="960" height="320"></canvas>
-            </div>
-
-            <div class="canvas-card">
-              <div class="canvas-header">
-                <h3>Waveform</h3>
-                <p>Short window of the live signal.</p>
-              </div>
-              <canvas id="scopeCanvas" width="960" height="220"></canvas>
-            </div>
-          </div>
+          <article class="note-card">
+            <p class="eyebrow">Fine Tuning</p>
+            <h2>Darkness And Texture</h2>
+            <p id="detailHint">
+              Use High Cut for the strongest darker-tone shift, Warmth for a gentler low-end tilt, and Green Layer
+              to blend in or fully remove the soft mid-band bed.
+            </p>
+          </article>
         </section>
       </main>
 
       <footer class="footer-copy">
-        Everything you hear is synthesized in the browser with the Web Audio API and generated continuously in
-        real time.
+        Everything you hear is synthesized continuously in the browser with the Web Audio API.
       </footer>
     </div>
 

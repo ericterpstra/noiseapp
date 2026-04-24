@@ -1,12 +1,3 @@
-export const DEFAULT_GENERATOR_CONFIG = Object.freeze({
-  mode: "fan",
-  fanAir: 0.55,
-  fanRumble: 0.65,
-  fanHum: 0.52,
-  fanHumPitch: 92,
-  fanDrift: 0.32,
-});
-
 export const FAN_RUMBLE_FILTERS = Object.freeze({
   firstCutoff: 115,
   secondCutoff: 48,
@@ -33,9 +24,4 @@ export function fanHumLevel(fanHum) {
 export function fanHumFrequency({ fanHumPitch, fanDrift, drift, motion }) {
   const modulatedPitch = fanHumPitch + (drift * 4.5 + motion * 2.2) * fanDrift;
   return Math.max(30, modulatedPitch);
-}
-
-export function greenTrimGainForQ(greenQ) {
-  const q = clamp(greenQ, 0.3, 6);
-  return 2.8 + q * 0.38;
 }
