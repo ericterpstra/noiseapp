@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Sleep Tone</title>
+    <title>Sleepy Pal</title>
     <meta
       name="description"
       content="Real-time browser sleep tone generator with a fan-like bed, optional green-noise layer, and tone-shaping controls."
@@ -14,12 +14,7 @@
     <div class="page-shell">
       <header class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">Live synthesis, no prerecorded audio</p>
-          <h1>Sleep Tone</h1>
-          <p class="hero-text">
-            Shape a continuous fan-style sleep tone with low rumble, soft hum, a darker high-cut range, and an
-            optional green-noise layer.
-          </p>
+          <h1>Sleepy Pal</h1>
         </div>
         <div class="hero-actions">
           <button id="powerButton" class="power-button" type="button">Start Audio</button>
@@ -30,37 +25,13 @@
       <main class="dashboard">
         <section class="control-panel" aria-labelledby="toneHeading">
           <div class="section-heading">
-            <p class="eyebrow">Generator</p>
             <h2 id="toneHeading">Tone Controls</h2>
           </div>
 
           <div id="toneControls" class="control-grid"></div>
         </section>
 
-        <section class="insight-panel" aria-label="Tone context">
-          <article class="note-card">
-            <p class="eyebrow">Current Tone</p>
-            <h2 id="colorTitle">Sleep Tone</h2>
-            <p id="colorDescription">
-              A layered sleep tone with fan-like airflow, low rumble, soft hum, and an optional green-noise bed for
-              a deeper ambient texture.
-            </p>
-          </article>
-
-          <article class="note-card">
-            <p class="eyebrow">Fine Tuning</p>
-            <h2>Darkness And Texture</h2>
-            <p id="detailHint">
-              Use High Cut for the strongest darker-tone shift, Warmth for a gentler low-end tilt, and Green Layer
-              to blend in or fully remove the soft mid-band bed.
-            </p>
-          </article>
-        </section>
       </main>
-
-      <footer class="footer-copy">
-        Everything you hear is synthesized continuously in the browser with the Web Audio API.
-      </footer>
     </div>
 
     <script type="module" src="/app.js"></script>

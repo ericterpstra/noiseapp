@@ -9,20 +9,15 @@ import {
   generateSleepToneSample,
 } from "./app/audio/sleep-tone-dsp.js";
 import { getScreenDefinition } from "./app/config/screens.js";
-import { DEFAULT_SOURCE_ID, getSourceDefinition } from "./app/config/sources.js";
 import { mountScreenControls } from "./app/ui/mount-controls.js";
 import { sliderToLogFrequency } from "./app/ui/formatters.js";
 
 const screen = getScreenDefinition();
-const sourceDefinition = getSourceDefinition(DEFAULT_SOURCE_ID);
 
 const controls = {
   ...mountScreenControls(document, screen),
   powerButton: document.querySelector("#powerButton"),
   audioStatus: document.querySelector("#audioStatus"),
-  colorTitle: document.querySelector("#colorTitle"),
-  colorDescription: document.querySelector("#colorDescription"),
-  detailHint: document.querySelector("#detailHint"),
 };
 
 const appState = createDefaultState();
@@ -318,7 +313,6 @@ class NoiseLab {
 
   applyState() {
     updateLabels();
-    updateText();
 
     if (!this.context || !this.noiseSource || !this.masterGain) {
       return;
@@ -363,20 +357,6 @@ function updateLabels() {
   }
 }
 
-function updateText() {
-  if (controls.colorTitle) {
-    controls.colorTitle.textContent = sourceDefinition.title;
-  }
-
-  if (controls.colorDescription) {
-    controls.colorDescription.textContent = sourceDefinition.description;
-  }
-
-  if (controls.detailHint) {
-    controls.detailHint.textContent = sourceDefinition.detail;
-  }
-}
-
 const lab = new NoiseLab();
 
 if (controls.powerButton) {
@@ -409,4 +389,3 @@ for (const control of CONTROL_DEFINITIONS) {
 
 setAudioStatus("Idle", "idle");
 updateLabels();
-updateText();
