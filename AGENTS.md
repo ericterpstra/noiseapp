@@ -133,7 +133,7 @@ xcodebuild \
   -project ios/SleepCompanion/SleepCompanion.xcodeproj \
   -scheme SleepCompanion \
   -configuration Debug \
-  -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5),OS=26.4.1' \
+  -destination 'platform=iOS Simulator,name=iPad (A16),OS=26.4.1' \
   -derivedDataPath /tmp/noiseapp-derived \
   CODE_SIGNING_ALLOWED=NO \
   test-without-building

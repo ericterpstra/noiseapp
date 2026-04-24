@@ -6,6 +6,7 @@ final class SleepCompanionUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.staticTexts["clockTime"].waitForExistence(timeout: 5))
+        XCTAssertGreaterThan(app.frame.width, app.frame.height)
         XCTAssertTrue(app.buttons["playPauseButton"].exists)
     }
 

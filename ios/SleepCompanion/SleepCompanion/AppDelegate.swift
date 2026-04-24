@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     func applicationDidBecomeActive(_ application: UIApplication) {
         application.isIdleTimerDisabled = true
         configureAudioSession()
+        requestLandscapeOrientation()
     }
 
     func applicationWillResignActive(_ application: UIApplication) {
@@ -25,6 +26,16 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
             try session.setActive(true)
         } catch {
             assertionFailure("Unable to configure playback audio session: \(error)")
+        }
+    }
+
+    private func requestLandscapeOrientation() {
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene else {
+            return
+        }
+
+        if #available(iOS 16.0, *) {
+            scene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeRight))
         }
     }
 }

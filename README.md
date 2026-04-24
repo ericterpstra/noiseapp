@@ -38,11 +38,32 @@ xcodebuild \
   -project ios/SleepCompanion/SleepCompanion.xcodeproj \
   -scheme SleepCompanion \
   -configuration Debug \
-  -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5),OS=26.4.1' \
+  -destination 'platform=iOS Simulator,name=iPad (A16),OS=26.4.1' \
   -derivedDataPath /tmp/noiseapp-derived \
   CODE_SIGNING_ALLOWED=NO \
   test-without-building
 ```
+
+Run the app on the regular iPad simulator:
+
+```bash
+/bin/zsh -lc 'set -e; DEVICE="95138C28-2AD3-4D11-B539-FE7F0DD72F8F"; APP="/tmp/noiseapp-derived/Build/Products/Debug-iphonesimulator/SleepCompanion.app"; xcodebuild -project ios/SleepCompanion/SleepCompanion.xcodeproj -scheme SleepCompanion -configuration Debug -destination "platform=iOS Simulator,name=iPad (A16),OS=26.4.1" -derivedDataPath /tmp/noiseapp-derived CODE_SIGNING_ALLOWED=NO build; xcrun simctl boot "$DEVICE" 2>/dev/null || true; xcrun simctl bootstatus "$DEVICE"; open -a Simulator --args -CurrentDeviceUDID "$DEVICE"; xcrun simctl install "$DEVICE" "$APP"; xcrun simctl launch "$DEVICE" com.example.SleepCompanion'
+```
+
+The explicit `open -a Simulator` step brings the simulator window forward. `xcrun simctl launch` starts the app process, but it can do that without opening or focusing the Simulator GUI.
+
+## Test On A Physical iPad
+
+1. Open `ios/SleepCompanion/SleepCompanion.xcodeproj` in Xcode.
+2. Select the `SleepCompanion` scheme.
+3. Connect the iPad over USB or pair it wirelessly in Xcode's Devices and Simulators window.
+4. In the project target's Signing & Capabilities tab, choose your Apple Developer Team. Xcode will replace the placeholder bundle signing setup for local device builds.
+5. Select the connected iPad as the run destination.
+6. Hold the iPad in landscape, then click Run.
+7. Confirm launch behavior: clock opens in landscape, the display stays awake, the play button starts sleep noise, the gear flips to settings, `Cancel` returns without committing draft changes, and `Apply` commits changed clock/sound settings.
+8. For an overnight QA pass, plug the iPad into power, disable Focus/notifications as needed, start a sound, leave the app foregrounded, and verify audio stability, screen wake behavior, wake transition, and settings restore after relaunch.
+
+Physical-device builds require a valid signing team and a trusted developer certificate on the iPad. If iPadOS blocks the first launch, open Settings on the iPad and trust the developer profile shown for your Apple ID or team.
 
 ## Current Repo Layout
 
