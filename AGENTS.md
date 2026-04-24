@@ -2,144 +2,150 @@
 
 ## Purpose
 
-This repo is a small Web Audio app that should evolve toward a modular, schema-driven structure. Most of the current implementation is concentrated in `public/app.js`; treat that file as a legacy integration point, not the target architecture.
+This repo is now a native SwiftUI iPad app for a sleep companion experience. The old Web Audio/Node proof of concept lives under `archive/web-poc/` as historical reference only.
+
+The active product path is:
+
+- `ios/SleepCompanionCore/`: testable Swift core package.
+- `ios/SleepCompanion/`: SwiftUI iPad app and UI tests.
 
 ## Primary Goal
 
 Optimize future work for:
 
-- adding new noise sources
-- adding new knobs
-- adding new screens or panels
+- adding procedural sound controls
+- adding new procedural sound sources
+- evolving the full-screen iPad settings workspace
 - refactoring safely without audio regressions
+- keeping the overnight clock experience reliable
 
-## Rules for Future Changes
+## Rules For Future Changes
 
-1. Do not add new controls by only copy-pasting more `querySelector`, `appState`, `bindings`, and `updateLabels` entries.
-   Move the app toward a shared control schema instead.
+1. Do not add new sound knobs only as handwritten SwiftUI controls.
+   Add them to the native sound-control schema first.
 
-2. Do not duplicate DSP logic across the main-thread fallback and the AudioWorklet implementation.
-   Shared noise algorithms should come from one source of truth.
+2. Keep procedural DSP separate from SwiftUI.
+   UI code should describe user intent; audio code should own graph construction, parameter updates, and rendering.
 
-3. Keep the audio engine separate from DOM concerns.
-   UI code should describe intent; audio code should own graph construction and parameter updates.
+3. Keep sound metadata centralized.
+   A sound preset or source definition should own its title, description, defaults, and parameter membership.
 
-4. Keep source metadata centralized.
-   A source definition should own its title, description, defaults, control membership, and routing requirements.
+4. Prefer configuration over conditionals.
+   Adding a new control should mostly mean registering schema data and mapping it through typed helpers.
 
-5. Prefer configuration over conditionals.
-   Adding a new source or screen should mostly mean registering data, not scattering new `if` branches through unrelated functions.
+5. Keep pure helpers pure and testable.
+   Frequency mapping, value formatting, control schema completeness, draft application, and source-to-parameter mapping belong in `SleepCompanionCore` with tests.
 
-6. Keep pure helpers pure and testable.
-   Frequency mapping, value formatting, schema validation, and source-to-parameter mapping should live in small modules with tests.
-
-7. Preserve the simple runtime unless there is a clear payoff.
-   This is currently a no-build static app. Do not add a framework or build system casually; earn that complexity.
-
-## Recommended Boundaries
-
-Target the codebase toward these responsibilities:
-
-- `config/`: source definitions, control schema, screen definitions
-- `state/`: defaults, store, selectors, serialization
-- `ui/`: rendering, DOM mounting, copy, formatters
-- `audio/`: engine lifecycle, graph builder, DSP, routing stages
-- `visualizers/`: spectrum and waveform drawing
-
-If a change touches all of those layers at once, the design is probably too coupled.
+6. Keep the archived Web Audio PoC read-only for product purposes.
+   Do not add active product behavior to `archive/web-poc/` unless the user explicitly asks for a separate prototype.
 
 ## Current Module Boundaries
 
-The first incremental schema slice now lives under `public/app/`:
+- `ios/SleepCompanionCore/Sources/SleepCompanionCore/SoundParameters.swift`: procedural parameter model, sound parameter IDs, native control definitions, value formatting, and typed get/set access.
+- `ios/SleepCompanionCore/Sources/SleepCompanionCore/SoundPresetDefinition.swift`: bundled procedural presets. Presets are parameter definitions, not audio assets.
+- `ios/SleepCompanionCore/Sources/SleepCompanionCore/AppSettings.swift`: persisted app settings and pure draft-editing model.
+- `ios/SleepCompanionCore/Sources/SleepCompanionCore/SleepToneDSP.swift`: procedural sleep-tone sample generation.
+- `ios/SleepCompanion/SleepCompanion/SleepAudioEngine.swift`: AVAudioEngine lifecycle, graph setup, EQ mapping, and render-node connection.
+- `ios/SleepCompanion/SleepCompanion/SleepAppModel.swift`: app state coordination, persistence, wake transitions, playback, settings draft lifecycle, and preview audition.
+- `ios/SleepCompanion/SleepCompanion/ClockScreen.swift`: front clock display and back-side full-screen settings workspace.
 
-- `public/app/config/sources.js`: source copy, source-specific control membership, generator mode, and current route.
-- `public/app/config/controls.js`: control labels, input metadata, defaults, parsers, and value formatters.
-- `public/app/config/screens.js`: current screen control regions.
-- `public/app/audio/tone-shaping.js`: shared fan and green parameter helpers used by `public/app.js` and `public/noise-generator.worklet.js`.
-- `public/app/ui/mount-controls.js`: shared DOM mounting for configured controls.
-- `public/app/ui/formatters.js`: pure value formatting and slider-to-frequency mapping helpers.
+If a change touches all of these layers at once, the design is probably too coupled.
 
-`public/app.js` still owns app state coordination, audio graph setup, most parameter application, and visualizers. Treat that as the next boundary to shrink rather than a pattern to extend.
-
-## Adding a New Control
+## Adding A New Sound Control
 
 Preferred shape:
 
-1. Define the control in a schema with label, range, default, parser, and formatter.
-2. Associate it with one or more sources or screens in configuration.
-3. Map it to audio parameters in one place.
-4. Render it through shared UI code instead of handwritten markup where practical.
-5. Add a small test for formatting, mapping, or schema completeness.
-
-For the current code shape, start in `public/app/config/controls.js`, then add the control to a source in `public/app/config/sources.js` or to a screen region in `public/app/config/screens.js`.
+1. Add a `SoundParameterID`.
+2. Add one `SoundControlDefinition` with label, group, range, step, default, and formatter behavior.
+3. Add typed get/set support on `SoundParameters`.
+4. Map the parameter to DSP or AVAudioEngine behavior in one place.
+5. Add Swift package tests for schema completeness, formatting, clamping, and parameter mapping.
+6. Let the settings workspace render it through the shared schema-driven sound control UI.
 
 Avoid:
 
-- new global mutable fields without schema entries
-- manual duplication across multiple UI update functions
-- source-specific DOM lookups embedded inside the audio engine
+- source-specific UI branches for generic controls
+- duplicating value formatting in SwiftUI
+- adding mutable app state without Codable persistence or draft semantics
+- adding controls that cannot be omitted or rearranged safely
 
-## Adding a New Source
+## Adding A New Sound Source Or Preset
 
 Preferred shape:
 
-1. Add one source definition with copy, defaults, and control membership.
-2. Implement or register its DSP or shaping stage.
-3. Wire it into the graph builder through configuration.
+1. Add one source or preset definition with copy, defaults, and procedural parameters.
+2. Implement or register its DSP behavior without duplicating existing algorithms.
+3. Wire it into the audio engine through typed configuration.
 4. Add at least one verification point for defaults and parameter mapping.
 
-For the current code shape, source copy and UI membership belong in `public/app/config/sources.js`; audio routing still requires changes in `public/app.js` until the graph builder exists.
-
 Avoid:
 
-- hiding source behavior in scattered special cases
-- adding new source-specific branches in unrelated UI code unless you are actively extracting that code
+- hiding source behavior in scattered SwiftUI conditions
+- adding bundled audio loops for current procedural-only features
+- changing persisted settings without fallback coverage
 
-## Adding a New Screen
+## Adding A New Screen Or Panel
 
 Preferred shape:
 
-1. Define the screen in a screen registry.
-2. Declare which controls, cards, and visualizers it uses.
-3. Reuse the same store and audio engine.
-4. Keep screen mounting isolated so missing elements do not crash unrelated screens.
+1. Keep the clock screen as the first-run and overnight default.
+2. Add new panels as isolated SwiftUI views with clear model methods.
+3. Use draft editing when a screen previews changes before applying.
+4. Keep missing optional controls from crashing startup or preview.
 
 Avoid:
 
-- assuming every control exists on every page
-- binding listeners globally to elements that may not be mounted
+- modal settings sheets for the main iPad settings workflow
+- card-in-card layouts
+- global bindings that assume every control exists on every screen
 
 ## Testing Expectations
 
-Before claiming a refactor is safe, add or run verification for:
+Before claiming a change is safe, add or run verification for:
 
-- math helpers
-- source registry completeness
+- Swift package tests for pure core logic
 - control schema completeness
-- any new parameter mapping
-- any new route or screen-mount behavior
+- parameter formatting and clamping
+- settings draft apply/cancel behavior
+- audio parameter update paths
+- iPad UI tests for clock launch and settings workspace behavior
 
-At minimum, add lightweight smoke coverage before large architecture changes.
+Primary verification commands:
+
+```bash
+cd ios/SleepCompanionCore
+swift test
+```
+
+```bash
+xcodebuild \
+  -project ios/SleepCompanion/SleepCompanion.xcodeproj \
+  -scheme SleepCompanion \
+  -configuration Debug \
+  -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath /tmp/noiseapp-derived \
+  CODE_SIGNING_ALLOWED=NO \
+  build-for-testing
+```
+
+```bash
+xcodebuild \
+  -project ios/SleepCompanion/SleepCompanion.xcodeproj \
+  -scheme SleepCompanion \
+  -configuration Debug \
+  -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5),OS=26.4.1' \
+  -derivedDataPath /tmp/noiseapp-derived \
+  CODE_SIGNING_ALLOWED=NO \
+  test-without-building
+```
 
 ## Review Checklist
 
 Before finishing a change, check:
 
-- Is this moving knowledge into one source of truth or spreading it out further?
-- Did any DSP behavior get copied into a second place?
-- Can a future screen omit unused controls without crashing startup?
-- Can a future contributor find a source definition without reading the whole app?
-- Did the change reduce or increase the size of `public/app.js`?
-
-## Current Hotspots
-
-Be especially careful around:
-
-- `public/app.js`: currently mixes state, DOM wiring, audio lifecycle, routing, and drawing
-- `public/app/config/*.js`: schema changes should stay complete and covered by `test/config.test.js`
-- `public/noise-generator.worklet.js`: currently duplicates main-thread DSP behavior
-- `server.mjs`: path validation should remain strict and separator-aware
-
-## Documentation Expectation
-
-If you introduce a new module boundary, source registry, or schema, update [README.md](/Users/ericterpstra/Dev/noiseapp/README.md) so the next contributor does not need to rediscover the architecture from code.
+- Is sound/control knowledge moving into one source of truth?
+- Did any DSP behavior get copied?
+- Can future settings panels omit unused controls without crashing?
+- Can a future contributor find a preset or control definition without reading the whole app?
+- Did the change preserve the foreground overnight clock path?
+- Did README.md change if architecture or workflows changed?

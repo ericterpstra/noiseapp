@@ -1,54 +1,71 @@
-# Sleep Tone
+# Sleep Companion
 
-Sleep Tone is a small browser-based sleep sound generator built with the Web Audio API. It synthesizes one continuous hybrid tone: a fan-like bed with airflow, rumble, hum, slow movement, warmth, high/low cuts, stereo width, and an optional green-noise layer.
+Sleep Companion is a native SwiftUI iPad app for overnight sleep sound and clock display. It targets iPad landscape orientation, runs offline, generates procedural sleep noise with AVAudioEngine, and keeps the clock screen available as the primary experience.
 
-The app is still a no-build static project. Keep it that way unless a future change earns the extra complexity.
+The old Web Audio proof of concept has been archived under `archive/web-poc/`. It remains useful for sound-design reference, but it is no longer the active product path or root workflow.
 
-## Run Locally
+## Run And Test
 
 Requirements:
-- Node.js 18+ is a reasonable baseline.
 
-Start the app:
+- Xcode with iOS Simulator support.
+- Swift toolchain compatible with the Xcode project.
+
+Run the native core tests:
 
 ```bash
-npm start
+cd ios/SleepCompanionCore
+swift test
 ```
 
-Then open [http://localhost:8060](http://localhost:8060).
-
-Run the lightweight tests:
+Build the iPad app for the iOS Simulator:
 
 ```bash
-npm test
+xcodebuild \
+  -project ios/SleepCompanion/SleepCompanion.xcodeproj \
+  -scheme SleepCompanion \
+  -configuration Debug \
+  -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath /tmp/noiseapp-derived \
+  CODE_SIGNING_ALLOWED=NO \
+  build-for-testing
+```
+
+Run UI tests on an available iPad simulator:
+
+```bash
+xcodebuild \
+  -project ios/SleepCompanion/SleepCompanion.xcodeproj \
+  -scheme SleepCompanion \
+  -configuration Debug \
+  -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5),OS=26.4.1' \
+  -derivedDataPath /tmp/noiseapp-derived \
+  CODE_SIGNING_ALLOWED=NO \
+  test-without-building
 ```
 
 ## Current Repo Layout
 
-- `server.mjs`: minimal static file server for the `public/` directory.
-- `public/index.html`: the single-screen sleep tone UI shell.
-- `public/app.js`: application bootstrap, state coordination, audio graph setup, and control binding.
-- `public/app/audio/sleep-tone-dsp.js`: shared sleep-tone sample generation used by both the main-thread fallback and the AudioWorklet.
-- `public/app/audio/tone-shaping.js`: pure fan and shaping helpers used by the shared DSP.
-- `public/app/config/`: source, control, and screen schema used to mount the current UI.
-- `public/app/state/presets.js`: versioned preset payload serialization and normalization for future save/load UI.
-- `public/app/ui/`: shared UI helpers such as control mounting and value formatting.
-- `public/noise-generator.worklet.js`: AudioWorklet wrapper around the shared sleep-tone DSP.
-- `public/styles.css`: styling for the current interface.
-- `test/`: Node test coverage for schema completeness, DSP helpers, and preset payload behavior.
+- `ios/SleepCompanionCore/`: Swift package for testable settings, wake-time logic, sound presets, frequency mapping, control schema, draft editing, and procedural DSP.
+- `ios/SleepCompanion/`: SwiftUI iPad app shell, AVAudioEngine playback, landscape-only project settings, and UI tests.
+- `archive/web-poc/`: historical Web Audio proof of concept, including its old Node server, static app, and Node tests.
 
-## How It Works Today
+## Native App Behavior
 
-1. `server.mjs` serves the static frontend.
-2. `public/app.js` mounts controls from configuration, owns the mutable runtime state, creates the Web Audio graph, and applies state to audio parameters.
-3. The generator prefers `AudioWorkletNode` and falls back to `ScriptProcessorNode` when needed.
-4. Both audio backends call the same sleep-tone DSP helpers from `public/app/audio/sleep-tone-dsp.js`.
-5. `greenMix` is part of the sleep-tone generator itself. At `0`, the green layer contributes no signal.
-6. Preset save/load is not visible yet, but `public/app/state/presets.js` defines the v1 payload shape and normalization rules.
+The app opens to a centered digital clock on a black background. The display stays awake while the clock is active, vertical swipes adjust clock luminosity, and the translucent bottom play button starts or pauses procedural sleep noise.
 
-## Control Schema
+Tapping the gear flips the clock over into a full-screen landscape settings workspace. The settings side edits a draft copy of the active settings:
 
-The active control surface is defined in `public/app/config/controls.js` and mounted through `public/app/config/screens.js`.
+- Left panel: bundled sound preset picker, preview play/stop, and all procedural sound controls.
+- Right panel: live clock-face preview, clock customization controls, and compact wake-time editing.
+- `Apply` commits the draft, persists settings, updates active audio parameters, and flips back.
+- `Cancel` discards the draft and restores the prior active audio state if preview was running.
+
+Wake behavior is silent: when the wake time fires while the app is foregrounded, sleep noise stops, clock luminosity goes to full, and the background changes from black to white.
+
+## Sound Controls
+
+Swift now owns the procedural sound-control schema in `SleepCompanionCore`.
 
 Current controls:
 
@@ -64,33 +81,19 @@ Current controls:
 - `highCut`
 - `width`
 
-When adding a new knob, define the control once in the schema, add it to the sleep source/screen configuration, map it to audio behavior in one place, and add focused test coverage.
+When adding a new sound knob, add it to the native control schema, expose typed get/set behavior on `SoundParameters`, wire it through the settings workspace, and add focused Swift package coverage for defaults, formatting, and parameter mapping.
 
-## Preset Payloads
+## Archived Web PoC
 
-The future save/load UI should use the helpers in `public/app/state/presets.js` instead of reading or writing raw state directly.
+The archived Web Audio app can still be inspected or run from `archive/web-poc/` if needed:
 
-```js
-{
-  kind: "sleep-tone-preset",
-  version: 1,
-  values: {
-    level,
-    greenMix,
-    fanAir,
-    fanRumble,
-    fanHum,
-    fanHumPitch,
-    fanDrift,
-    warmth,
-    lowCut,
-    highCut,
-    width
-  }
-}
+```bash
+cd archive/web-poc
+npm test
+npm start
 ```
 
-`readPresetPayload()` ignores unknown keys, fills missing values from defaults, clamps numeric values to schema ranges, and returns `null` for unrelated payloads.
+Do not add new product behavior to the archived PoC. Future product work should happen in the Swift app unless there is an explicit decision to prototype separately.
 
 ## Contributor Guidance
 
