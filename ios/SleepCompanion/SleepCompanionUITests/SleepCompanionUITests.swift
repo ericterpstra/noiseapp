@@ -18,11 +18,15 @@ final class SleepCompanionUITests: XCTestCase {
         app.buttons["settingsFlipButton"].tap()
 
         XCTAssertTrue(app.otherElements["settingsWorkspace"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["soundPreviewButton"].exists)
+        XCTAssertFalse(app.buttons["soundPreviewButton"].exists)
+        XCTAssertTrue(app.buttons["noisePresetPicker"].exists)
         XCTAssertTrue(app.sliders["soundControl.level"].exists)
         XCTAssertTrue(app.sliders["soundControl.greenMix"].exists)
         XCTAssertTrue(app.sliders["soundControl.fanAir"].exists)
         XCTAssertTrue(app.sliders["soundControl.highCut"].exists)
+        XCTAssertTrue(app.buttons["noisePresetSaveButton"].exists)
+        XCTAssertTrue(app.buttons["noisePresetSaveAsButton"].exists)
+        XCTAssertTrue(app.buttons["noisePresetDeleteButton"].exists)
         XCTAssertTrue(app.staticTexts["clockPreviewTime"].exists)
 
         app.buttons["settingsCancelButton"].tap()
@@ -30,7 +34,7 @@ final class SleepCompanionUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["clockTime"].waitForExistence(timeout: 5))
     }
 
-    func testSettingsWorkspaceCanSaveAndLoadLocalPresetDrafts() {
+    func testSettingsWorkspaceCanSaveNewNoiseFromEditedControls() {
         let app = XCUIApplication()
         app.launch()
         let presetName = "Night Fan \(Int(Date().timeIntervalSince1970))"
@@ -38,26 +42,24 @@ final class SleepCompanionUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["clockTime"].waitForExistence(timeout: 5))
         app.buttons["settingsFlipButton"].tap()
 
-        XCTAssertTrue(app.otherElements["savedPresetsSection"].waitForExistence(timeout: 5))
-        let titleField = app.textFields["savedPresetTitleField"]
-        XCTAssertTrue(titleField.exists)
+        XCTAssertFalse(app.otherElements["savedPresetsSection"].exists)
+        XCTAssertTrue(app.sliders["soundControl.level"].waitForExistence(timeout: 5))
+        app.sliders["soundControl.level"].adjust(toNormalizedSliderPosition: 0.7)
+        XCTAssertTrue(app.buttons["noisePresetSaveAsButton"].isEnabled)
+        app.buttons["noisePresetSaveAsButton"].tap()
+
+        let saveAsAlert = app.alerts["Save as new noise"]
+        XCTAssertTrue(saveAsAlert.waitForExistence(timeout: 5))
+        let titleField = saveAsAlert.textFields["Name"]
+        XCTAssertTrue(titleField.waitForExistence(timeout: 5))
         titleField.tap()
         titleField.typeText(presetName)
+        saveAsAlert.buttons["Save"].tap()
 
-        let descriptionField = app.textFields["savedPresetDescriptionField"]
-        XCTAssertTrue(descriptionField.exists)
-        descriptionField.tap()
-        descriptionField.typeText("Soft clock and fan blend")
-
-        app.buttons["savedPresetSaveNewButton"].tap()
-
-        XCTAssertTrue(app.staticTexts["savedPresetTitle.\(presetName)"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["savedPresetLoad.\(presetName)"].exists)
-        XCTAssertTrue(app.buttons["savedPresetUpdate.\(presetName)"].exists)
-        XCTAssertTrue(app.buttons["savedPresetDuplicate.\(presetName)"].exists)
-        XCTAssertTrue(app.buttons["savedPresetDelete.\(presetName)"].exists)
-
-        app.buttons["savedPresetLoad.\(presetName)"].tap()
+        app.buttons["noisePresetPicker"].tap()
+        XCTAssertTrue(app.buttons[presetName].waitForExistence(timeout: 5))
+        app.buttons[presetName].tap()
+        XCTAssertTrue(app.buttons["noisePresetDeleteButton"].isEnabled)
         app.buttons["settingsCancelButton"].tap()
 
         XCTAssertTrue(app.staticTexts["clockTime"].waitForExistence(timeout: 5))

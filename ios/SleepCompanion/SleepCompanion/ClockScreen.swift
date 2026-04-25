@@ -138,7 +138,7 @@ private struct SettingsWorkspace: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Settings")
                             .font(.system(size: 34, weight: .semibold))
-                        Text("Preview sound and clock changes before applying them.")
+                        Text("Sound edits update the current sleep noise until you apply or cancel.")
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     }
@@ -180,48 +180,26 @@ private struct SettingsWorkspace: View {
 
 private struct SoundControlsPanel: View {
     @EnvironmentObject private var model: SleepAppModel
+    @State private var hasEditedSound = false
+    @State private var isShowingSaveAsAlert = false
+    @State private var isShowingDeleteConfirmation = false
+    @State private var saveAsTitle = ""
+    @State private var saveAsDescription = ""
     var draft: SettingsDraft
 
     var body: some View {
         Panel {
             VStack(alignment: .leading, spacing: 18) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Sleep Noise")
-                            .font(.title2.weight(.semibold))
-                        Text(currentPresetDescription)
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-
-                    Spacer()
-
-                    Button {
-                        model.toggleDraftPreview()
-                    } label: {
-                        Label(model.isPreviewingDraftAudio ? "Stop Preview" : "Start Preview",
-                              systemImage: model.isPreviewingDraftAudio ? "stop.fill" : "play.fill")
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .accessibilityIdentifier("soundPreviewButton")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Sleep Noise")
+                        .font(.title2.weight(.semibold))
+                    Text(currentNoiseDescription)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
                 }
 
-                SavedPresetsSection(draft: draft)
-
-                Picker("Preset", selection: Binding(
-                    get: { draft.settings.activeSoundPresetID },
-                    set: { model.selectDraftPreset(id: $0) }
-                )) {
-                    if draft.settings.activeSoundPresetID == SoundPresetDefinition.customDraftPresetID {
-                        Text("Custom").tag(SoundPresetDefinition.customDraftPresetID)
-                    }
-
-                    ForEach(SoundPresetDefinition.bundledPresets) { preset in
-                        Text(preset.title).tag(preset.id)
-                    }
-                }
-                .pickerStyle(.segmented)
+                noiseSelector
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
@@ -234,7 +212,13 @@ private struct SoundControlsPanel: View {
                                         .foregroundStyle(.white.opacity(0.86))
 
                                     ForEach(definitions) { definition in
-                                        SoundControlRow(definition: definition, parameters: draft.settings.activeSoundParameters)
+                                        SoundControlRow(
+                                            definition: definition,
+                                            parameters: draft.settings.activeSoundParameters,
+                                            onEdit: {
+                                                hasEditedSound = true
+                                            }
+                                        )
                                     }
                                 }
                             }
@@ -242,193 +226,203 @@ private struct SoundControlsPanel: View {
                     }
                     .padding(.trailing, 8)
                 }
+
+                HStack(spacing: 12) {
+                    Button {
+                        saveSelectedNoise()
+                    } label: {
+                        Label("Save", systemImage: "square.and.arrow.down")
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(selectedSavedPresetID == nil || !hasEditedSound)
+                    .accessibilityIdentifier("noisePresetSaveButton")
+
+                    Button {
+                        openSaveAsAlert()
+                    } label: {
+                        Label("Save As", systemImage: "plus")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!hasEditedSound)
+                    .accessibilityIdentifier("noisePresetSaveAsButton")
+
+                    Spacer()
+
+                    Button(role: .destructive) {
+                        isShowingDeleteConfirmation = true
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(selectedSavedPresetID == nil)
+                    .accessibilityIdentifier("noisePresetDeleteButton")
+                }
             }
+        }
+        .alert("Save as new noise", isPresented: $isShowingSaveAsAlert) {
+            TextField("Name", text: $saveAsTitle)
+                .accessibilityIdentifier("noisePresetNameField")
+            TextField("Description", text: $saveAsDescription)
+                .accessibilityIdentifier("noisePresetDescriptionField")
+            Button("Cancel", role: .cancel) {}
+            Button("Save") {
+                saveAsNewNoise()
+            }
+        } message: {
+            Text("This saves the current sound controls as a local noise preset.")
+        }
+        .alert("Delete noise?", isPresented: $isShowingDeleteConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                deleteSelectedNoise()
+            }
+        } message: {
+            Text("The current sound values will stay in this draft.")
         }
     }
 
-    private var currentPresetDescription: String {
-        SoundPresetDefinition.bundledPresets.first { $0.id == draft.settings.activeSoundPresetID }?.description
-            ?? "Custom sound shaped from the current controls."
-    }
-}
-
-private struct SavedPresetsSection: View {
-    @EnvironmentObject private var model: SleepAppModel
-    @State private var presetTitle = ""
-    @State private var presetDescription = ""
-    @State private var confirmingDeleteID: String?
-    @FocusState private var focusedField: PresetField?
-    var draft: SettingsDraft
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("Saved Presets")
-                    .font(.headline)
-                    .foregroundStyle(.white.opacity(0.86))
-                Spacer()
-                Text(savedAssociationText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            HStack(spacing: 8) {
-                TextField("Name", text: $presetTitle)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($focusedField, equals: .title)
-                    .accessibilityIdentifier("savedPresetTitleField")
-
-                TextField("Description", text: $presetDescription)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($focusedField, equals: .description)
-                    .accessibilityIdentifier("savedPresetDescriptionField")
-
+    private var noiseSelector: some View {
+        Menu {
+            if isCustomNoiseSelected {
                 Button {
-                    focusedField = nil
-                    if let preset = model.saveDraftAsPreset(title: presetTitle, description: presetDescription) {
-                        seedFields(from: preset)
-                    }
                 } label: {
-                    Label("Save New", systemImage: "plus")
+                    Label("Custom", systemImage: "checkmark")
                 }
-                .buttonStyle(.borderedProminent)
-                .accessibilityIdentifier("savedPresetSaveNewButton")
+                .disabled(true)
             }
 
-            if model.savedPresetLibrary.presets.isEmpty {
-                Text("No saved presets yet.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            } else {
-                ScrollView {
-                    VStack(spacing: 8) {
-                        ForEach(model.savedPresetLibrary.presets) { preset in
-                            savedPresetRow(preset)
+            Section("Built-in") {
+                ForEach(SoundPresetDefinition.bundledPresets) { preset in
+                    Button {
+                        model.selectDraftPreset(id: preset.id)
+                        hasEditedSound = false
+                    } label: {
+                        noiseMenuLabel(preset.title, isSelected: isBundledPresetSelected(preset.id))
+                    }
+                }
+            }
+
+            if !model.savedPresetLibrary.presets.isEmpty {
+                Section("Saved") {
+                    ForEach(model.savedPresetLibrary.presets) { preset in
+                        Button {
+                            model.loadSavedPresetIntoDraft(id: preset.id)
+                            hasEditedSound = false
+                        } label: {
+                            noiseMenuLabel(preset.title, isSelected: selectedSavedPresetID == preset.id)
                         }
                     }
                 }
-                .frame(maxHeight: 188)
             }
-        }
-        .padding(12)
-        .background(Color.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(.white.opacity(0.1), lineWidth: 1)
-        )
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("savedPresetsSection")
-        .onAppear {
-            if let preset = associatedPreset {
-                seedFields(from: preset)
-            }
-        }
-    }
-
-    private func savedPresetRow(_ preset: SavedPresetDefinition) -> some View {
-        HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(preset.title)
-                    .font(.subheadline.weight(.semibold))
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "waveform")
+                Text(currentNoiseTitle)
+                    .font(.headline)
                     .lineLimit(1)
-                    .accessibilityIdentifier("savedPresetTitle.\(preset.title)")
-
-                if !preset.description.isEmpty {
-                    Text(preset.description)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
+                Spacer()
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
             }
-
-            Spacer(minLength: 8)
-
-            compactAction("Load", systemImage: "tray.and.arrow.down") {
-                focusedField = nil
-                model.loadSavedPresetIntoDraft(id: preset.id)
-                seedFields(from: preset)
-            }
-            .accessibilityIdentifier("savedPresetLoad.\(preset.title)")
-
-            compactAction("Update", systemImage: "arrow.clockwise") {
-                focusedField = nil
-                if let updated = model.updateSavedPreset(id: preset.id) {
-                    seedFields(from: updated)
-                }
-            }
-            .accessibilityIdentifier("savedPresetUpdate.\(preset.title)")
-
-            compactAction("Rename", systemImage: "pencil") {
-                focusedField = nil
-                if let renamed = model.renameSavedPreset(id: preset.id, title: presetTitle, description: presetDescription) {
-                    seedFields(from: renamed)
-                }
-            }
-            .accessibilityIdentifier("savedPresetRename.\(preset.title)")
-
-            compactAction("Duplicate", systemImage: "plus.square.on.square") {
-                focusedField = nil
-                if let duplicate = model.duplicateSavedPreset(id: preset.id) {
-                    seedFields(from: duplicate)
-                }
-            }
-            .accessibilityIdentifier("savedPresetDuplicate.\(preset.title)")
-
-            if confirmingDeleteID == preset.id {
-                compactAction("Confirm Delete", systemImage: "checkmark") {
-                    focusedField = nil
-                    _ = model.deleteSavedPreset(id: preset.id)
-                    confirmingDeleteID = nil
-                }
-                .accessibilityIdentifier("savedPresetConfirmDelete.\(preset.title)")
-
-                compactAction("Keep", systemImage: "xmark") {
-                    focusedField = nil
-                    confirmingDeleteID = nil
-                }
-                .accessibilityIdentifier("savedPresetKeep.\(preset.title)")
-            } else {
-                compactAction("Delete", systemImage: "trash") {
-                    focusedField = nil
-                    confirmingDeleteID = preset.id
-                }
-                .accessibilityIdentifier("savedPresetDelete.\(preset.title)")
-            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(.white.opacity(0.12), lineWidth: 1)
+            )
         }
-        .padding(10)
-        .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .buttonStyle(.plain)
+        .accessibilityLabel("Noise preset")
+        .accessibilityIdentifier("noisePresetPicker")
     }
 
-    private func compactAction(_ title: String, systemImage: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Label(title, systemImage: systemImage)
-                .labelStyle(.iconOnly)
+    @ViewBuilder
+    private func noiseMenuLabel(_ title: String, isSelected: Bool) -> some View {
+        if isSelected {
+            Label(title, systemImage: "checkmark")
+        } else {
+            Text(title)
         }
-        .buttonStyle(.bordered)
-        .controlSize(.small)
-        .help(title)
     }
 
-    private var associatedPreset: SavedPresetDefinition? {
-        guard let activeSavedPresetID = draft.settings.activeSavedPresetID else {
+    private var currentNoiseTitle: String {
+        if let selectedSavedPreset {
+            return selectedSavedPreset.title
+        }
+
+        return SoundPresetDefinition.bundledPresets.first { $0.id == draft.settings.activeSoundPresetID }?.title
+            ?? "Custom"
+    }
+
+    private var currentNoiseDescription: String {
+        if let selectedSavedPreset {
+            return selectedSavedPreset.description.isEmpty ? "User-created noise." : selectedSavedPreset.description
+        }
+
+        return SoundPresetDefinition.bundledPresets.first { $0.id == draft.settings.activeSoundPresetID }?.description
+            ?? "Custom sound shaped from the current controls."
+    }
+
+    private var selectedSavedPresetID: String? {
+        guard let activeSavedPresetID = draft.settings.activeSavedPresetID,
+              model.savedPresetLibrary.preset(id: activeSavedPresetID) != nil else {
             return nil
         }
 
-        return model.savedPresetLibrary.preset(id: activeSavedPresetID)
+        return activeSavedPresetID
     }
 
-    private var savedAssociationText: String {
-        associatedPreset?.title ?? "Draft"
+    private var selectedSavedPreset: SavedPresetDefinition? {
+        guard let selectedSavedPresetID else {
+            return nil
+        }
+
+        return model.savedPresetLibrary.preset(id: selectedSavedPresetID)
     }
 
-    private func seedFields(from preset: SavedPresetDefinition) {
-        presetTitle = preset.title
-        presetDescription = preset.description
+    private var isCustomNoiseSelected: Bool {
+        selectedSavedPresetID == nil
+            && draft.settings.activeSoundPresetID == SoundPresetDefinition.customDraftPresetID
     }
 
-    private enum PresetField: Hashable {
-        case title
-        case description
+    private func isBundledPresetSelected(_ id: String) -> Bool {
+        selectedSavedPresetID == nil && draft.settings.activeSoundPresetID == id
+    }
+
+    private func openSaveAsAlert() {
+        saveAsTitle = ""
+        saveAsDescription = ""
+        isShowingSaveAsAlert = true
+    }
+
+    private func saveSelectedNoise() {
+        guard let selectedSavedPresetID else {
+            return
+        }
+
+        _ = model.updateSavedPreset(id: selectedSavedPresetID)
+        hasEditedSound = false
+    }
+
+    private func saveAsNewNoise() {
+        guard let preset = model.saveDraftAsPreset(title: saveAsTitle, description: saveAsDescription) else {
+            return
+        }
+
+        saveAsTitle = preset.title
+        saveAsDescription = preset.description
+        hasEditedSound = false
+    }
+
+    private func deleteSelectedNoise() {
+        guard let selectedSavedPresetID else {
+            return
+        }
+
+        _ = model.deleteSavedPreset(id: selectedSavedPresetID)
+        hasEditedSound = false
     }
 }
 
@@ -436,6 +430,7 @@ private struct SoundControlRow: View {
     @EnvironmentObject private var model: SleepAppModel
     var definition: SoundControlDefinition
     var parameters: SoundParameters
+    var onEdit: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -451,7 +446,10 @@ private struct SoundControlRow: View {
             Slider(
                 value: Binding(
                     get: { parameters[definition.id] },
-                    set: { model.setDraftSoundParameter(definition.id, value: $0) }
+                    set: {
+                        onEdit()
+                        model.setDraftSoundParameter(definition.id, value: $0)
+                    }
                 ),
                 in: definition.minValue...definition.maxValue,
                 step: definition.step

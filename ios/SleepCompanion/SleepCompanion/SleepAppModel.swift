@@ -9,7 +9,6 @@ final class SleepAppModel: ObservableObject {
     @Published var isWakeActive: Bool
     @Published var isShowingSettings: Bool
     @Published var settingsDraft: SettingsDraft?
-    @Published var isPreviewingDraftAudio: Bool
     @Published var savedPresetLibrary: SavedPresetLibrary
 
     private let store: AppSettingsStore
@@ -17,8 +16,7 @@ final class SleepAppModel: ObservableObject {
     private let audioEngine: SleepAudioEngine
     private var clockTask: Task<Void, Never>?
     private var activeWakeDate: Date?
-    private var wasPlayingBeforeDraftPreview = false
-    private var parametersBeforeDraftPreview: SoundParameters?
+    private var wasPlayingWhenSettingsOpened = false
 
     init(
         store: AppSettingsStore = .appDefault,
@@ -31,7 +29,7 @@ final class SleepAppModel: ObservableObject {
         let loadedSavedPresetLibrary = (try? savedPresetStore.load()) ?? SavedPresetLibrary()
         var loadedSettings = (try? store.load()) ?? .default
         if let activeSavedPresetID = loadedSettings.activeSavedPresetID,
-           loadedSavedPresetLibrary.preset(id: activeSavedPresetID) == nil {
+           !Self.savedPreset(activeSavedPresetID, matches: loadedSettings, in: loadedSavedPresetLibrary) {
             loadedSettings.activeSavedPresetID = nil
         }
         self.settings = loadedSettings
@@ -40,7 +38,6 @@ final class SleepAppModel: ObservableObject {
         self.isWakeActive = loadedSettings.hasCompletedWakeTransition
         self.isShowingSettings = false
         self.settingsDraft = nil
-        self.isPreviewingDraftAudio = false
         self.savedPresetLibrary = loadedSavedPresetLibrary
         self.activeWakeDate = loadedSettings.wakeTime.nextOccurrence(after: Date())
     }
@@ -109,15 +106,17 @@ final class SleepAppModel: ObservableObject {
     }
 
     func beginSettings() {
+        wasPlayingWhenSettingsOpened = isPlaying
         settingsDraft = SettingsDraft(settings: settings)
         isShowingSettings = true
     }
 
     func cancelSettingsDraft() {
-        if isPreviewingDraftAudio {
-            stopDraftPreview()
+        if wasPlayingWhenSettingsOpened, isPlaying {
+            audioEngine.update(parameters: settings.activeSoundParameters)
         }
 
+        wasPlayingWhenSettingsOpened = false
         settingsDraft = nil
         isShowingSettings = false
     }
@@ -130,22 +129,17 @@ final class SleepAppModel: ObservableObject {
 
         settings = draft.appliedSettings()
         if let activeSavedPresetID = settings.activeSavedPresetID,
-           savedPresetLibrary.preset(id: activeSavedPresetID) == nil {
+           !Self.savedPreset(activeSavedPresetID, matches: settings, in: savedPresetLibrary) {
             settings.activeSavedPresetID = nil
         }
         isWakeActive = settings.hasCompletedWakeTransition
         activeWakeDate = settings.wakeTime.nextOccurrence(after: Date())
 
-        if isPreviewingDraftAudio {
-            isPreviewingDraftAudio = false
-            parametersBeforeDraftPreview = nil
-            wasPlayingBeforeDraftPreview = false
-            isPlaying = true
-            audioEngine.update(parameters: settings.activeSoundParameters)
-        } else if isPlaying {
+        if isPlaying {
             audioEngine.update(parameters: settings.activeSoundParameters)
         }
 
+        wasPlayingWhenSettingsOpened = false
         settingsDraft = nil
         persist()
         isShowingSettings = false
@@ -158,7 +152,7 @@ final class SleepAppModel: ObservableObject {
 
         draft.selectSoundPreset(id: id)
         settingsDraft = draft
-        updateDraftPreviewIfNeeded()
+        updateDraftPlaybackIfNeeded()
     }
 
     func loadSavedPresetIntoDraft(id: String) {
@@ -169,7 +163,7 @@ final class SleepAppModel: ObservableObject {
 
         draft.loadSavedPreset(preset)
         settingsDraft = draft
-        updateDraftPreviewIfNeeded()
+        updateDraftPlaybackIfNeeded()
     }
 
     @discardableResult
@@ -186,6 +180,7 @@ final class SleepAppModel: ObservableObject {
         draft.loadSavedPreset(preset)
         settingsDraft = draft
         persistSavedPresetLibrary()
+        updateDraftPlaybackIfNeeded()
         return preset
     }
 
@@ -199,6 +194,7 @@ final class SleepAppModel: ObservableObject {
         draft.loadSavedPreset(preset)
         settingsDraft = draft
         persistSavedPresetLibrary()
+        updateDraftPlaybackIfNeeded()
         return preset
     }
 
@@ -248,7 +244,7 @@ final class SleepAppModel: ObservableObject {
 
         draft.setSoundParameter(id, value: value)
         settingsDraft = draft
-        updateDraftPreviewIfNeeded()
+        updateDraftPlaybackIfNeeded()
     }
 
     func setDraftClockFace(_ clockFace: ClockFaceSettings) {
@@ -269,57 +265,6 @@ final class SleepAppModel: ObservableObject {
         settingsDraft = draft
     }
 
-    func toggleDraftPreview() {
-        if isPreviewingDraftAudio {
-            stopDraftPreview()
-        } else {
-            startDraftPreview()
-        }
-    }
-
-    func startDraftPreview() {
-        guard let draft = settingsDraft else {
-            return
-        }
-
-        if !isPreviewingDraftAudio {
-            wasPlayingBeforeDraftPreview = isPlaying
-            parametersBeforeDraftPreview = settings.activeSoundParameters
-        }
-
-        do {
-            try audioEngine.start(parameters: draft.settings.activeSoundParameters)
-            isPlaying = true
-            isPreviewingDraftAudio = true
-        } catch {
-            isPreviewingDraftAudio = false
-            assertionFailure("Unable to start draft preview: \(error)")
-        }
-    }
-
-    func stopDraftPreview() {
-        guard isPreviewingDraftAudio else {
-            return
-        }
-
-        isPreviewingDraftAudio = false
-
-        if wasPlayingBeforeDraftPreview, let parametersBeforeDraftPreview {
-            do {
-                try audioEngine.start(parameters: parametersBeforeDraftPreview)
-                isPlaying = true
-            } catch {
-                isPlaying = false
-                assertionFailure("Unable to restore sleep audio after preview: \(error)")
-            }
-        } else {
-            stopPlayback()
-        }
-
-        wasPlayingBeforeDraftPreview = false
-        self.parametersBeforeDraftPreview = nil
-    }
-
     func setWakeTime(_ wakeTime: WakeTime) {
         settings.wakeTime = wakeTime
         settings.hasCompletedWakeTransition = false
@@ -329,19 +274,16 @@ final class SleepAppModel: ObservableObject {
     }
 
     func setClockFont(_ fontID: ClockFontID) {
-        settings.activeSavedPresetID = nil
         settings.clockFace.fontID = fontID
         persist()
     }
 
     func setClockColor(_ colorHex: String) {
-        settings.activeSavedPresetID = nil
         settings.clockFace.colorHex = colorHex
         persist()
     }
 
     func setClockSize(_ size: Double) {
-        settings.activeSavedPresetID = nil
         settings.clockFace = ClockFaceSettings(
             fontID: settings.clockFace.fontID,
             colorHex: settings.clockFace.colorHex,
@@ -352,7 +294,6 @@ final class SleepAppModel: ObservableObject {
     }
 
     func setLuminosity(_ luminosity: Double) {
-        settings.activeSavedPresetID = nil
         settings.clockFace = ClockFaceSettings(
             fontID: settings.clockFace.fontID,
             colorHex: settings.clockFace.colorHex,
@@ -371,7 +312,6 @@ final class SleepAppModel: ObservableObject {
         settings.hasCompletedWakeTransition = isActive
 
         if isActive {
-            settings.activeSavedPresetID = nil
             settings.clockFace = ClockFaceSettings(
                 fontID: settings.clockFace.fontID,
                 colorHex: settings.clockFace.colorHex,
@@ -409,8 +349,8 @@ final class SleepAppModel: ObservableObject {
         activeWakeDate = settings.wakeTime.nextOccurrence(after: currentDate)
     }
 
-    private func updateDraftPreviewIfNeeded() {
-        guard isPreviewingDraftAudio, let draft = settingsDraft else {
+    private func updateDraftPlaybackIfNeeded() {
+        guard wasPlayingWhenSettingsOpened, isPlaying, let draft = settingsDraft else {
             return
         }
 
@@ -419,11 +359,23 @@ final class SleepAppModel: ObservableObject {
 
     private func normalizedPresetTitle(_ title: String) -> String {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "Saved Preset" : trimmed
+        return trimmed.isEmpty ? "Saved Noise" : trimmed
     }
 
     private func normalizedPresetDescription(_ description: String) -> String {
         description.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func savedPreset(
+        _ id: String,
+        matches settings: AppSettings,
+        in library: SavedPresetLibrary
+    ) -> Bool {
+        guard let preset = library.preset(id: id) else {
+            return false
+        }
+
+        return preset.soundParameters == settings.activeSoundParameters
     }
 
     private static let clockFormatter: DateFormatter = {

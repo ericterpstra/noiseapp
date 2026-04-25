@@ -54,12 +54,10 @@ public struct SettingsDraft: Equatable, Sendable {
 
     public mutating func setSoundParameter(_ id: SoundParameterID, value: Double) {
         settings.activeSoundPresetID = SoundPresetDefinition.customDraftPresetID
-        settings.activeSavedPresetID = nil
         settings.activeSoundParameters[id] = value
     }
 
     public mutating func setClockFace(_ clockFace: ClockFaceSettings) {
-        settings.activeSavedPresetID = nil
         settings.clockFace = clockFace
     }
 
@@ -67,7 +65,6 @@ public struct SettingsDraft: Equatable, Sendable {
         settings.activeSavedPresetID = preset.id
         settings.activeSoundPresetID = preset.sourceSoundPresetID ?? SoundPresetDefinition.customDraftPresetID
         settings.activeSoundParameters = preset.soundParameters
-        settings.clockFace = preset.clockFace
     }
 
     public mutating func clearSavedPresetAssociation() {

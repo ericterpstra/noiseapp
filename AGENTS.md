@@ -43,11 +43,11 @@ Optimize future work for:
 
 - `ios/SleepCompanionCore/Sources/SleepCompanionCore/SoundParameters.swift`: procedural parameter model, sound parameter IDs, native control definitions, value formatting, and typed get/set access.
 - `ios/SleepCompanionCore/Sources/SleepCompanionCore/SoundPresetDefinition.swift`: bundled procedural presets. Presets are parameter definitions, not audio assets.
-- `ios/SleepCompanionCore/Sources/SleepCompanionCore/SavedPresetDefinition.swift`: local user-saved sound + clock preset definitions, library helpers, and JSON store.
+- `ios/SleepCompanionCore/Sources/SleepCompanionCore/SavedPresetDefinition.swift`: local user-saved noise preset definitions, library helpers, and JSON store.
 - `ios/SleepCompanionCore/Sources/SleepCompanionCore/AppSettings.swift`: persisted app settings and pure draft-editing model.
 - `ios/SleepCompanionCore/Sources/SleepCompanionCore/SleepToneDSP.swift`: procedural sleep-tone sample generation.
 - `ios/SleepCompanion/SleepCompanion/SleepAudioEngine.swift`: AVAudioEngine lifecycle, graph setup, EQ mapping, and render-node connection.
-- `ios/SleepCompanion/SleepCompanion/SleepAppModel.swift`: app state coordination, persistence, wake transitions, playback, settings draft lifecycle, and preview audition.
+- `ios/SleepCompanion/SleepCompanion/SleepAppModel.swift`: app state coordination, persistence, wake transitions, playback, and settings draft lifecycle.
 - `ios/SleepCompanion/SleepCompanion/ClockScreen.swift`: front clock display and back-side full-screen settings workspace.
 
 If a change touches all of these layers at once, the design is probably too coupled.
@@ -85,21 +85,21 @@ Avoid:
 - adding bundled audio loops for current procedural-only features
 - changing persisted settings without fallback coverage
 
-## Changing Saved Preset Behavior
+## Changing Saved Noise Preset Behavior
 
 Preferred shape:
 
-1. Keep user-saved presets local-only unless the product plan explicitly adds import/export or sync.
-2. Store saved preset data through `SavedPresetStore`; keep active app settings in `AppSettingsStore`.
-3. Keep saved preset edits draft-aware: loading a preset updates the settings draft until `Apply`.
-4. Clear `activeSavedPresetID` whenever a sound or clock edit makes the current values diverge from the saved preset.
+1. Keep user-saved noise presets local-only unless the product plan explicitly adds import/export or sync.
+2. Store saved noise data through `SavedPresetStore`; keep active app settings in `AppSettingsStore`.
+3. Keep saved noise edits draft-aware: loading a saved noise updates sound parameters in the settings draft until `Apply`.
+4. Keep `activeSavedPresetID` tied only to user-created noise selections; clock edits should not clear it.
 5. Add Swift package tests for library ordering, JSON fallback, draft loading, and persisted-settings compatibility.
 
 Avoid:
 
 - mixing mutable user presets into the bundled preset list
-- saving wake time inside user saved presets
-- deleting a saved preset without preserving the current active sound and clock values
+- saving wake time or clock-face settings inside user-saved noise presets
+- deleting a saved noise without preserving the current draft or active sound values
 
 ## Adding A New Screen Or Panel
 

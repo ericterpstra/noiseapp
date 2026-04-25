@@ -2,7 +2,7 @@ import XCTest
 @testable import SleepCompanionCore
 
 final class SavedPresetLibraryTests: XCTestCase {
-    func testCreateCapturesSoundAndClockWithoutWakeTime() {
+    func testCreateCapturesSoundWithoutClockOrWakeTime() {
         let createdAt = Date(timeIntervalSince1970: 1_000)
         let settings = AppSettings(
             clockFace: ClockFaceSettings(fontID: .serif, colorHex: "#8CC8FF", size: 164, luminosity: 0.72),
@@ -25,7 +25,6 @@ final class SavedPresetLibraryTests: XCTestCase {
         XCTAssertEqual(preset.title, "Morning Fan")
         XCTAssertEqual(preset.description, "A brighter saved blend.")
         XCTAssertEqual(preset.soundParameters, settings.activeSoundParameters)
-        XCTAssertEqual(preset.clockFace, settings.clockFace)
         XCTAssertEqual(preset.sourceSoundPresetID, "soft-green")
         XCTAssertEqual(preset.createdAt, createdAt)
         XCTAssertEqual(preset.updatedAt, createdAt)
@@ -52,7 +51,7 @@ final class SavedPresetLibraryTests: XCTestCase {
 
         XCTAssertEqual(updated?.createdAt, firstDate)
         XCTAssertEqual(updated?.updatedAt, updateDate)
-        XCTAssertEqual(updated?.clockFace, updatedSettings.clockFace)
+        XCTAssertEqual(updated?.soundParameters.fanHumPitch, 64)
         XCTAssertEqual(renamed?.title, "Second Renamed")
         XCTAssertEqual(renamed?.description, "Updated text")
         XCTAssertEqual(renamed?.updatedAt, renameDate)
@@ -69,7 +68,6 @@ final class SavedPresetLibraryTests: XCTestCase {
             title: "First",
             description: "",
             soundParameters: .defaultControlValues,
-            clockFace: .default,
             sourceSoundPresetID: nil,
             createdAt: date,
             updatedAt: date
@@ -79,7 +77,6 @@ final class SavedPresetLibraryTests: XCTestCase {
             title: "Second",
             description: "",
             soundParameters: .defaultControlValues,
-            clockFace: .default,
             sourceSoundPresetID: nil,
             createdAt: date,
             updatedAt: date

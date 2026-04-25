@@ -5,7 +5,6 @@ public struct SavedPresetDefinition: Codable, Equatable, Identifiable, Sendable 
     public var title: String
     public var description: String
     public var soundParameters: SoundParameters
-    public var clockFace: ClockFaceSettings
     public var sourceSoundPresetID: String?
     public var createdAt: Date
     public var updatedAt: Date
@@ -15,7 +14,6 @@ public struct SavedPresetDefinition: Codable, Equatable, Identifiable, Sendable 
         title: String,
         description: String,
         soundParameters: SoundParameters,
-        clockFace: ClockFaceSettings,
         sourceSoundPresetID: String?,
         createdAt: Date,
         updatedAt: Date
@@ -24,7 +22,6 @@ public struct SavedPresetDefinition: Codable, Equatable, Identifiable, Sendable 
         self.title = title
         self.description = description
         self.soundParameters = soundParameters.clamped()
-        self.clockFace = clockFace
         self.sourceSoundPresetID = sourceSoundPresetID
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -62,7 +59,6 @@ public struct SavedPresetLibrary: Codable, Equatable, Sendable {
             title: title,
             description: description,
             soundParameters: settings.activeSoundParameters,
-            clockFace: settings.clockFace,
             sourceSoundPresetID: sourceSoundPresetID(from: settings),
             createdAt: now,
             updatedAt: now
@@ -83,7 +79,6 @@ public struct SavedPresetLibrary: Codable, Equatable, Sendable {
 
         var preset = presets[index]
         preset.soundParameters = settings.activeSoundParameters.clamped()
-        preset.clockFace = settings.clockFace
         preset.sourceSoundPresetID = sourceSoundPresetID(from: settings)
         preset.updatedAt = now
         presets[index] = preset
