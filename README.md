@@ -67,7 +67,7 @@ Physical-device builds require a valid signing team and a trusted developer cert
 
 ## Current Repo Layout
 
-- `ios/SleepCompanionCore/`: Swift package for testable settings, wake-time logic, sound presets, frequency mapping, control schema, draft editing, and procedural DSP.
+- `ios/SleepCompanionCore/`: Swift package for testable settings, wake-time logic, bundled and user-saved sound/clock presets, frequency mapping, control schema, draft editing, and procedural DSP.
 - `ios/SleepCompanion/`: SwiftUI iPad app shell, AVAudioEngine playback, landscape-only project settings, and UI tests.
 - `archive/web-poc/`: historical Web Audio proof of concept, including its old Node server, static app, and Node tests.
 
@@ -77,10 +77,12 @@ The app opens to a centered digital clock on a black background. The display sta
 
 Tapping the gear flips the clock over into a full-screen landscape settings workspace. The settings side edits a draft copy of the active settings:
 
-- Left panel: bundled sound preset picker, preview play/stop, and all procedural sound controls.
+- Left panel: local saved preset controls, bundled sound preset picker, preview play/stop, and all procedural sound controls.
 - Right panel: live clock-face preview, clock customization controls, and compact wake-time editing.
 - `Apply` commits the draft, persists settings, updates active audio parameters, and flips back.
 - `Cancel` discards the draft and restores the prior active audio state if preview was running.
+
+Saved presets are local-only sound + clock-face combinations. They are stored separately from active settings in `presets.json`, support save/load/update/rename/duplicate/delete in the settings workspace, and do not include wake time. Loading a saved preset changes only the draft until `Apply`.
 
 Wake behavior is silent: when the wake time fires while the app is foregrounded, sleep noise stops, clock luminosity goes to full, and the background changes from black to white.
 

@@ -3,6 +3,7 @@ import Foundation
 public struct AppSettings: Codable, Equatable, Sendable {
     public var clockFace: ClockFaceSettings
     public var activeSoundPresetID: String
+    public var activeSavedPresetID: String?
     public var activeSoundParameters: SoundParameters
     public var wakeTime: WakeTime
     public var hasCompletedWakeTransition: Bool
@@ -10,12 +11,14 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public init(
         clockFace: ClockFaceSettings,
         activeSoundPresetID: String,
+        activeSavedPresetID: String? = nil,
         activeSoundParameters: SoundParameters,
         wakeTime: WakeTime,
         hasCompletedWakeTransition: Bool
     ) {
         self.clockFace = clockFace
         self.activeSoundPresetID = activeSoundPresetID
+        self.activeSavedPresetID = activeSavedPresetID
         self.activeSoundParameters = activeSoundParameters.clamped()
         self.wakeTime = wakeTime
         self.hasCompletedWakeTransition = hasCompletedWakeTransition
@@ -45,16 +48,30 @@ public struct SettingsDraft: Equatable, Sendable {
         }
 
         settings.activeSoundPresetID = preset.id
+        settings.activeSavedPresetID = nil
         settings.activeSoundParameters = preset.parameters
     }
 
     public mutating func setSoundParameter(_ id: SoundParameterID, value: Double) {
         settings.activeSoundPresetID = SoundPresetDefinition.customDraftPresetID
+        settings.activeSavedPresetID = nil
         settings.activeSoundParameters[id] = value
     }
 
     public mutating func setClockFace(_ clockFace: ClockFaceSettings) {
+        settings.activeSavedPresetID = nil
         settings.clockFace = clockFace
+    }
+
+    public mutating func loadSavedPreset(_ preset: SavedPresetDefinition) {
+        settings.activeSavedPresetID = preset.id
+        settings.activeSoundPresetID = preset.sourceSoundPresetID ?? SoundPresetDefinition.customDraftPresetID
+        settings.activeSoundParameters = preset.soundParameters
+        settings.clockFace = preset.clockFace
+    }
+
+    public mutating func clearSavedPresetAssociation() {
+        settings.activeSavedPresetID = nil
     }
 
     public mutating func setWakeTime(_ wakeTime: WakeTime) {

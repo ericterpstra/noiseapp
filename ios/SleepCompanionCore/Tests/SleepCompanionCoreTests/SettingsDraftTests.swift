@@ -56,4 +56,52 @@ final class SettingsDraftTests: XCTestCase {
 
         XCTAssertEqual(draft.cancelledSettings(), original)
     }
+
+    func testLoadingSavedPresetUpdatesDraftWithoutChangingOriginalSettings() {
+        let original = AppSettings.default
+        let preset = SavedPresetDefinition(
+            id: "saved-1",
+            title: "Saved",
+            description: "Stored sound and clock.",
+            soundParameters: SoundPresetDefinition.bundledPresets[2].parameters,
+            clockFace: ClockFaceSettings(fontID: .serif, colorHex: "#8CC8FF", size: 172, luminosity: 0.66),
+            sourceSoundPresetID: "low-rumble",
+            createdAt: Date(timeIntervalSince1970: 1),
+            updatedAt: Date(timeIntervalSince1970: 2)
+        )
+        var draft = SettingsDraft(settings: original)
+
+        draft.loadSavedPreset(preset)
+
+        XCTAssertEqual(draft.settings.activeSavedPresetID, "saved-1")
+        XCTAssertEqual(draft.settings.activeSoundPresetID, "low-rumble")
+        XCTAssertEqual(draft.settings.activeSoundParameters, preset.soundParameters)
+        XCTAssertEqual(draft.settings.clockFace, preset.clockFace)
+        XCTAssertNil(original.activeSavedPresetID)
+        XCTAssertEqual(original.clockFace, .default)
+    }
+
+    func testEditingSoundOrClockClearsActiveSavedPresetAssociation() {
+        let preset = SavedPresetDefinition(
+            id: "saved-1",
+            title: "Saved",
+            description: "",
+            soundParameters: SoundPresetDefinition.bundledPresets[1].parameters,
+            clockFace: .default,
+            sourceSoundPresetID: "soft-green",
+            createdAt: Date(timeIntervalSince1970: 1),
+            updatedAt: Date(timeIntervalSince1970: 1)
+        )
+
+        var soundDraft = SettingsDraft(settings: .default)
+        soundDraft.loadSavedPreset(preset)
+        soundDraft.setSoundParameter(.greenMix, value: 0.75)
+
+        var clockDraft = SettingsDraft(settings: .default)
+        clockDraft.loadSavedPreset(preset)
+        clockDraft.setClockFace(ClockFaceSettings(fontID: .monospaced, colorHex: "#FFFFFF", size: 120, luminosity: 0.5))
+
+        XCTAssertNil(soundDraft.settings.activeSavedPresetID)
+        XCTAssertNil(clockDraft.settings.activeSavedPresetID)
+    }
 }

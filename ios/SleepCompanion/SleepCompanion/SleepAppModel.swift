@@ -10,8 +10,10 @@ final class SleepAppModel: ObservableObject {
     @Published var isShowingSettings: Bool
     @Published var settingsDraft: SettingsDraft?
     @Published var isPreviewingDraftAudio: Bool
+    @Published var savedPresetLibrary: SavedPresetLibrary
 
     private let store: AppSettingsStore
+    private let savedPresetStore: SavedPresetStore
     private let audioEngine: SleepAudioEngine
     private var clockTask: Task<Void, Never>?
     private var activeWakeDate: Date?
@@ -20,11 +22,18 @@ final class SleepAppModel: ObservableObject {
 
     init(
         store: AppSettingsStore = .appDefault,
+        savedPresetStore: SavedPresetStore = .appDefault,
         audioEngine: SleepAudioEngine = SleepAudioEngine()
     ) {
         self.store = store
+        self.savedPresetStore = savedPresetStore
         self.audioEngine = audioEngine
-        let loadedSettings = (try? store.load()) ?? .default
+        let loadedSavedPresetLibrary = (try? savedPresetStore.load()) ?? SavedPresetLibrary()
+        var loadedSettings = (try? store.load()) ?? .default
+        if let activeSavedPresetID = loadedSettings.activeSavedPresetID,
+           loadedSavedPresetLibrary.preset(id: activeSavedPresetID) == nil {
+            loadedSettings.activeSavedPresetID = nil
+        }
         self.settings = loadedSettings
         self.currentDate = Date()
         self.isPlaying = false
@@ -32,6 +41,7 @@ final class SleepAppModel: ObservableObject {
         self.isShowingSettings = false
         self.settingsDraft = nil
         self.isPreviewingDraftAudio = false
+        self.savedPresetLibrary = loadedSavedPresetLibrary
         self.activeWakeDate = loadedSettings.wakeTime.nextOccurrence(after: Date())
     }
 
@@ -92,6 +102,7 @@ final class SleepAppModel: ObservableObject {
         }
 
         settings.activeSoundPresetID = preset.id
+        settings.activeSavedPresetID = nil
         settings.activeSoundParameters = preset.parameters
         audioEngine.update(parameters: preset.parameters)
         persist()
@@ -118,6 +129,10 @@ final class SleepAppModel: ObservableObject {
         }
 
         settings = draft.appliedSettings()
+        if let activeSavedPresetID = settings.activeSavedPresetID,
+           savedPresetLibrary.preset(id: activeSavedPresetID) == nil {
+            settings.activeSavedPresetID = nil
+        }
         isWakeActive = settings.hasCompletedWakeTransition
         activeWakeDate = settings.wakeTime.nextOccurrence(after: Date())
 
@@ -144,6 +159,86 @@ final class SleepAppModel: ObservableObject {
         draft.selectSoundPreset(id: id)
         settingsDraft = draft
         updateDraftPreviewIfNeeded()
+    }
+
+    func loadSavedPresetIntoDraft(id: String) {
+        guard var draft = settingsDraft,
+              let preset = savedPresetLibrary.preset(id: id) else {
+            return
+        }
+
+        draft.loadSavedPreset(preset)
+        settingsDraft = draft
+        updateDraftPreviewIfNeeded()
+    }
+
+    @discardableResult
+    func saveDraftAsPreset(title: String, description: String) -> SavedPresetDefinition? {
+        guard var draft = settingsDraft else {
+            return nil
+        }
+
+        let preset = savedPresetLibrary.create(
+            title: normalizedPresetTitle(title),
+            description: normalizedPresetDescription(description),
+            from: draft.settings
+        )
+        draft.loadSavedPreset(preset)
+        settingsDraft = draft
+        persistSavedPresetLibrary()
+        return preset
+    }
+
+    @discardableResult
+    func updateSavedPreset(id: String) -> SavedPresetDefinition? {
+        guard var draft = settingsDraft,
+              let preset = savedPresetLibrary.update(id: id, from: draft.settings) else {
+            return nil
+        }
+
+        draft.loadSavedPreset(preset)
+        settingsDraft = draft
+        persistSavedPresetLibrary()
+        return preset
+    }
+
+    @discardableResult
+    func renameSavedPreset(id: String, title: String, description: String) -> SavedPresetDefinition? {
+        let preset = savedPresetLibrary.rename(
+            id: id,
+            title: normalizedPresetTitle(title),
+            description: normalizedPresetDescription(description)
+        )
+        persistSavedPresetLibrary()
+        return preset
+    }
+
+    @discardableResult
+    func duplicateSavedPreset(id: String) -> SavedPresetDefinition? {
+        let preset = savedPresetLibrary.duplicate(id: id)
+        persistSavedPresetLibrary()
+        return preset
+    }
+
+    @discardableResult
+    func deleteSavedPreset(id: String) -> SavedPresetDefinition? {
+        let deleted = savedPresetLibrary.delete(id: id)
+        guard deleted != nil else {
+            return nil
+        }
+
+        if settings.activeSavedPresetID == id {
+            settings.activeSavedPresetID = nil
+            persist()
+        }
+
+        if var draft = settingsDraft, draft.settings.activeSavedPresetID == id {
+            draft.clearSavedPresetAssociation()
+            settingsDraft = draft
+        }
+
+        persistSavedPresetLibrary()
+        return deleted
     }
 
     func setDraftSoundParameter(_ id: SoundParameterID, value: Double) {
@@ -234,16 +329,19 @@ final class SleepAppModel: ObservableObject {
     }
 
     func setClockFont(_ fontID: ClockFontID) {
+        settings.activeSavedPresetID = nil
         settings.clockFace.fontID = fontID
         persist()
     }
 
     func setClockColor(_ colorHex: String) {
+        settings.activeSavedPresetID = nil
         settings.clockFace.colorHex = colorHex
         persist()
     }
 
     func setClockSize(_ size: Double) {
+        settings.activeSavedPresetID = nil
         settings.clockFace = ClockFaceSettings(
             fontID: settings.clockFace.fontID,
             colorHex: settings.clockFace.colorHex,
@@ -254,6 +352,7 @@ final class SleepAppModel: ObservableObject {
     }
 
     func setLuminosity(_ luminosity: Double) {
+        settings.activeSavedPresetID = nil
         settings.clockFace = ClockFaceSettings(
             fontID: settings.clockFace.fontID,
             colorHex: settings.clockFace.colorHex,
@@ -272,6 +371,7 @@ final class SleepAppModel: ObservableObject {
         settings.hasCompletedWakeTransition = isActive
 
         if isActive {
+            settings.activeSavedPresetID = nil
             settings.clockFace = ClockFaceSettings(
                 fontID: settings.clockFace.fontID,
                 colorHex: settings.clockFace.colorHex,
@@ -285,6 +385,10 @@ final class SleepAppModel: ObservableObject {
 
     func persist() {
         try? store.save(settings)
+    }
+
+    private func persistSavedPresetLibrary() {
+        try? savedPresetStore.save(savedPresetLibrary)
     }
 
     private func tick() {
@@ -313,6 +417,15 @@ final class SleepAppModel: ObservableObject {
         audioEngine.update(parameters: draft.settings.activeSoundParameters)
     }
 
+    private func normalizedPresetTitle(_ title: String) -> String {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Saved Preset" : trimmed
+    }
+
+    private func normalizedPresetDescription(_ description: String) -> String {
+        description.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     private static let clockFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "h:mma"
@@ -320,13 +433,23 @@ final class SleepAppModel: ObservableObject {
     }()
 }
 
-extension AppSettingsStore {
-    static var appDefault: AppSettingsStore {
-        let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
+private enum SleepCompanionStorage {
+    static var directory: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
             .first?
             .appendingPathComponent("SleepCompanion", isDirectory: true)
             ?? FileManager.default.temporaryDirectory
+    }
+}
 
-        return AppSettingsStore(fileURL: directory.appendingPathComponent("settings.json"))
+extension AppSettingsStore {
+    static var appDefault: AppSettingsStore {
+        AppSettingsStore(fileURL: SleepCompanionStorage.directory.appendingPathComponent("settings.json"))
+    }
+}
+
+extension SavedPresetStore {
+    static var appDefault: SavedPresetStore {
+        SavedPresetStore(fileURL: SleepCompanionStorage.directory.appendingPathComponent("presets.json"))
     }
 }

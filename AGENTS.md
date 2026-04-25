@@ -43,6 +43,7 @@ Optimize future work for:
 
 - `ios/SleepCompanionCore/Sources/SleepCompanionCore/SoundParameters.swift`: procedural parameter model, sound parameter IDs, native control definitions, value formatting, and typed get/set access.
 - `ios/SleepCompanionCore/Sources/SleepCompanionCore/SoundPresetDefinition.swift`: bundled procedural presets. Presets are parameter definitions, not audio assets.
+- `ios/SleepCompanionCore/Sources/SleepCompanionCore/SavedPresetDefinition.swift`: local user-saved sound + clock preset definitions, library helpers, and JSON store.
 - `ios/SleepCompanionCore/Sources/SleepCompanionCore/AppSettings.swift`: persisted app settings and pure draft-editing model.
 - `ios/SleepCompanionCore/Sources/SleepCompanionCore/SleepToneDSP.swift`: procedural sleep-tone sample generation.
 - `ios/SleepCompanion/SleepCompanion/SleepAudioEngine.swift`: AVAudioEngine lifecycle, graph setup, EQ mapping, and render-node connection.
@@ -83,6 +84,22 @@ Avoid:
 - hiding source behavior in scattered SwiftUI conditions
 - adding bundled audio loops for current procedural-only features
 - changing persisted settings without fallback coverage
+
+## Changing Saved Preset Behavior
+
+Preferred shape:
+
+1. Keep user-saved presets local-only unless the product plan explicitly adds import/export or sync.
+2. Store saved preset data through `SavedPresetStore`; keep active app settings in `AppSettingsStore`.
+3. Keep saved preset edits draft-aware: loading a preset updates the settings draft until `Apply`.
+4. Clear `activeSavedPresetID` whenever a sound or clock edit makes the current values diverge from the saved preset.
+5. Add Swift package tests for library ordering, JSON fallback, draft loading, and persisted-settings compatibility.
+
+Avoid:
+
+- mixing mutable user presets into the bundled preset list
+- saving wake time inside user saved presets
+- deleting a saved preset without preserving the current active sound and clock values
 
 ## Adding A New Screen Or Panel
 

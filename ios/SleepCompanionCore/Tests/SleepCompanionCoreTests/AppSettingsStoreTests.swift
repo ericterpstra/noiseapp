@@ -44,6 +44,46 @@ final class AppSettingsStoreTests: XCTestCase {
         XCTAssertEqual(try store.load(), .default)
     }
 
+    func testLoadSupportsOlderSettingsJSONWithoutSavedPresetID() throws {
+        let fileURL = temporarySettingsURL()
+        let json = """
+        {
+          "activeSoundParameters" : {
+            "fanAir" : 0.55,
+            "fanDrift" : 0.32,
+            "fanHum" : 0.52,
+            "fanHumPitch" : 92,
+            "fanRumble" : 0.65,
+            "greenMix" : 0.25,
+            "highCut" : 1,
+            "level" : 0.42,
+            "lowCut" : 0,
+            "warmth" : 0.35,
+            "width" : 1
+          },
+          "activeSoundPresetID" : "deep-fan",
+          "clockFace" : {
+            "colorHex" : "#F8F2E7",
+            "fontID" : "rounded",
+            "luminosity" : 0.42,
+            "size" : 132
+          },
+          "hasCompletedWakeTransition" : false,
+          "wakeTime" : {
+            "hour" : 7,
+            "minute" : 0
+          }
+        }
+        """
+        try Data(json.utf8).write(to: fileURL)
+        let store = AppSettingsStore(fileURL: fileURL)
+
+        let settings = try store.load()
+
+        XCTAssertEqual(settings.activeSoundPresetID, "deep-fan")
+        XCTAssertNil(settings.activeSavedPresetID)
+    }
+
     private func temporarySettingsURL() -> URL {
         FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: false)

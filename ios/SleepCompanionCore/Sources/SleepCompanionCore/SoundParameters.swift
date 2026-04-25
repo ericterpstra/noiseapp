@@ -315,6 +315,22 @@ public struct SoundParameters: Codable, Equatable, Sendable {
         }
     }
 
+    public static var defaultControlValues: SoundParameters {
+        SoundParameters(
+            level: SoundControlDefinition.definition(for: .level).defaultValue,
+            greenMix: SoundControlDefinition.definition(for: .greenMix).defaultValue,
+            fanAir: SoundControlDefinition.definition(for: .fanAir).defaultValue,
+            fanRumble: SoundControlDefinition.definition(for: .fanRumble).defaultValue,
+            fanHum: SoundControlDefinition.definition(for: .fanHum).defaultValue,
+            fanHumPitch: SoundControlDefinition.definition(for: .fanHumPitch).defaultValue,
+            fanDrift: SoundControlDefinition.definition(for: .fanDrift).defaultValue,
+            warmth: SoundControlDefinition.definition(for: .warmth).defaultValue,
+            lowCut: SoundControlDefinition.definition(for: .lowCut).defaultValue,
+            highCut: SoundControlDefinition.definition(for: .highCut).defaultValue,
+            width: SoundControlDefinition.definition(for: .width).defaultValue
+        )
+    }
+
     private static func clamp(_ value: Double, min: Double, max: Double) -> Double {
         Swift.min(max, Swift.max(min, value))
     }

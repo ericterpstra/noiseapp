@@ -207,6 +207,8 @@ private struct SoundControlsPanel: View {
                     .accessibilityIdentifier("soundPreviewButton")
                 }
 
+                SavedPresetsSection(draft: draft)
+
                 Picker("Preset", selection: Binding(
                     get: { draft.settings.activeSoundPresetID },
                     set: { model.selectDraftPreset(id: $0) }
@@ -247,6 +249,186 @@ private struct SoundControlsPanel: View {
     private var currentPresetDescription: String {
         SoundPresetDefinition.bundledPresets.first { $0.id == draft.settings.activeSoundPresetID }?.description
             ?? "Custom sound shaped from the current controls."
+    }
+}
+
+private struct SavedPresetsSection: View {
+    @EnvironmentObject private var model: SleepAppModel
+    @State private var presetTitle = ""
+    @State private var presetDescription = ""
+    @State private var confirmingDeleteID: String?
+    @FocusState private var focusedField: PresetField?
+    var draft: SettingsDraft
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Saved Presets")
+                    .font(.headline)
+                    .foregroundStyle(.white.opacity(0.86))
+                Spacer()
+                Text(savedAssociationText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 8) {
+                TextField("Name", text: $presetTitle)
+                    .textFieldStyle(.roundedBorder)
+                    .focused($focusedField, equals: .title)
+                    .accessibilityIdentifier("savedPresetTitleField")
+
+                TextField("Description", text: $presetDescription)
+                    .textFieldStyle(.roundedBorder)
+                    .focused($focusedField, equals: .description)
+                    .accessibilityIdentifier("savedPresetDescriptionField")
+
+                Button {
+                    focusedField = nil
+                    if let preset = model.saveDraftAsPreset(title: presetTitle, description: presetDescription) {
+                        seedFields(from: preset)
+                    }
+                } label: {
+                    Label("Save New", systemImage: "plus")
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("savedPresetSaveNewButton")
+            }
+
+            if model.savedPresetLibrary.presets.isEmpty {
+                Text("No saved presets yet.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else {
+                ScrollView {
+                    VStack(spacing: 8) {
+                        ForEach(model.savedPresetLibrary.presets) { preset in
+                            savedPresetRow(preset)
+                        }
+                    }
+                }
+                .frame(maxHeight: 188)
+            }
+        }
+        .padding(12)
+        .background(Color.white.opacity(0.055), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(.white.opacity(0.1), lineWidth: 1)
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("savedPresetsSection")
+        .onAppear {
+            if let preset = associatedPreset {
+                seedFields(from: preset)
+            }
+        }
+    }
+
+    private func savedPresetRow(_ preset: SavedPresetDefinition) -> some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(preset.title)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .accessibilityIdentifier("savedPresetTitle.\(preset.title)")
+
+                if !preset.description.isEmpty {
+                    Text(preset.description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            compactAction("Load", systemImage: "tray.and.arrow.down") {
+                focusedField = nil
+                model.loadSavedPresetIntoDraft(id: preset.id)
+                seedFields(from: preset)
+            }
+            .accessibilityIdentifier("savedPresetLoad.\(preset.title)")
+
+            compactAction("Update", systemImage: "arrow.clockwise") {
+                focusedField = nil
+                if let updated = model.updateSavedPreset(id: preset.id) {
+                    seedFields(from: updated)
+                }
+            }
+            .accessibilityIdentifier("savedPresetUpdate.\(preset.title)")
+
+            compactAction("Rename", systemImage: "pencil") {
+                focusedField = nil
+                if let renamed = model.renameSavedPreset(id: preset.id, title: presetTitle, description: presetDescription) {
+                    seedFields(from: renamed)
+                }
+            }
+            .accessibilityIdentifier("savedPresetRename.\(preset.title)")
+
+            compactAction("Duplicate", systemImage: "plus.square.on.square") {
+                focusedField = nil
+                if let duplicate = model.duplicateSavedPreset(id: preset.id) {
+                    seedFields(from: duplicate)
+                }
+            }
+            .accessibilityIdentifier("savedPresetDuplicate.\(preset.title)")
+
+            if confirmingDeleteID == preset.id {
+                compactAction("Confirm Delete", systemImage: "checkmark") {
+                    focusedField = nil
+                    _ = model.deleteSavedPreset(id: preset.id)
+                    confirmingDeleteID = nil
+                }
+                .accessibilityIdentifier("savedPresetConfirmDelete.\(preset.title)")
+
+                compactAction("Keep", systemImage: "xmark") {
+                    focusedField = nil
+                    confirmingDeleteID = nil
+                }
+                .accessibilityIdentifier("savedPresetKeep.\(preset.title)")
+            } else {
+                compactAction("Delete", systemImage: "trash") {
+                    focusedField = nil
+                    confirmingDeleteID = preset.id
+                }
+                .accessibilityIdentifier("savedPresetDelete.\(preset.title)")
+            }
+        }
+        .padding(10)
+        .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func compactAction(_ title: String, systemImage: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .labelStyle(.iconOnly)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .help(title)
+    }
+
+    private var associatedPreset: SavedPresetDefinition? {
+        guard let activeSavedPresetID = draft.settings.activeSavedPresetID else {
+            return nil
+        }
+
+        return model.savedPresetLibrary.preset(id: activeSavedPresetID)
+    }
+
+    private var savedAssociationText: String {
+        associatedPreset?.title ?? "Draft"
+    }
+
+    private func seedFields(from preset: SavedPresetDefinition) {
+        presetTitle = preset.title
+        presetDescription = preset.description
+    }
+
+    private enum PresetField: Hashable {
+        case title
+        case description
     }
 }
 

@@ -24,6 +24,7 @@
 		C30000000000000000000006 /* SoundParameters.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000006 /* SoundParameters.swift */; };
 		C30000000000000000000007 /* SoundPresetDefinition.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000007 /* SoundPresetDefinition.swift */; };
 		C30000000000000000000008 /* WakeTime.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000008 /* WakeTime.swift */; };
+		C30000000000000000000009 /* SavedPresetDefinition.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000009 /* SavedPresetDefinition.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,6 +58,7 @@
 		C20000000000000000000006 /* SoundParameters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../SleepCompanionCore/Sources/SleepCompanionCore/SoundParameters.swift; sourceTree = "<group>"; };
 		C20000000000000000000007 /* SoundPresetDefinition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../SleepCompanionCore/Sources/SleepCompanionCore/SoundPresetDefinition.swift; sourceTree = "<group>"; };
 		C20000000000000000000008 /* WakeTime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../SleepCompanionCore/Sources/SleepCompanionCore/WakeTime.swift; sourceTree = "<group>"; };
+		C20000000000000000000009 /* SavedPresetDefinition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../SleepCompanionCore/Sources/SleepCompanionCore/SavedPresetDefinition.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -128,6 +130,7 @@
 				C20000000000000000000003 /* ClockFaceSettings.swift */,
 				C20000000000000000000004 /* FrequencyMapping.swift */,
 				C20000000000000000000005 /* SleepToneDSP.swift */,
+				C20000000000000000000009 /* SavedPresetDefinition.swift */,
 				C20000000000000000000006 /* SoundParameters.swift */,
 				C20000000000000000000007 /* SoundPresetDefinition.swift */,
 				C20000000000000000000008 /* WakeTime.swift */,
@@ -240,6 +243,7 @@
 				C30000000000000000000003 /* ClockFaceSettings.swift in Sources */,
 				C30000000000000000000004 /* FrequencyMapping.swift in Sources */,
 				C30000000000000000000005 /* SleepToneDSP.swift in Sources */,
+				C30000000000000000000009 /* SavedPresetDefinition.swift in Sources */,
 				C30000000000000000000006 /* SoundParameters.swift in Sources */,
 				C30000000000000000000007 /* SoundPresetDefinition.swift in Sources */,
 				C30000000000000000000008 /* WakeTime.swift in Sources */,
