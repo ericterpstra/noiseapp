@@ -4,6 +4,14 @@ import UIKit
 final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(
         _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        configureTextFieldAppearance()
+        return true
+    }
+
+    func application(
+        _ application: UIApplication,
         supportedInterfaceOrientationsFor window: UIWindow?
     ) -> UIInterfaceOrientationMask {
         .landscape
@@ -27,6 +35,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         } catch {
             assertionFailure("Unable to configure playback audio session: \(error)")
         }
+    }
+
+    private func configureTextFieldAppearance() {
+        UITextField.appearance().textColor = .label
+        UITextField.appearance().tintColor = .systemBlue
     }
 
     private func requestLandscapeOrientation() {

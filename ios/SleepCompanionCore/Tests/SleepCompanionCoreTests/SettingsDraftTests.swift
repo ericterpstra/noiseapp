@@ -32,7 +32,8 @@ final class SettingsDraftTests: XCTestCase {
                 fontID: .serif,
                 colorHex: "#8CC8FF",
                 size: 180,
-                luminosity: 0.75
+                luminosity: 0.75,
+                wakeBackgroundColorHex: "#102030"
             )
         )
         draft.setWakeTime(WakeTime(hour: 6, minute: 30))
@@ -44,6 +45,7 @@ final class SettingsDraftTests: XCTestCase {
         XCTAssertEqual(applied.clockFace.colorHex, "#8CC8FF")
         XCTAssertEqual(applied.clockFace.size, 180)
         XCTAssertEqual(applied.clockFace.luminosity, 0.75)
+        XCTAssertEqual(applied.clockFace.wakeBackgroundColorHex, "#102030")
         XCTAssertEqual(applied.wakeTime, WakeTime(hour: 6, minute: 30))
     }
 
@@ -52,7 +54,15 @@ final class SettingsDraftTests: XCTestCase {
         var draft = SettingsDraft(settings: original)
 
         draft.setSoundParameter(.greenMix, value: 0.8)
-        draft.setClockFace(ClockFaceSettings(fontID: .monospaced, colorHex: "#FFFFFF", size: 100, luminosity: 0.2))
+        draft.setClockFace(
+            ClockFaceSettings(
+                fontID: .monospaced,
+                colorHex: "#FFFFFF",
+                size: 100,
+                luminosity: 0.2,
+                wakeBackgroundColorHex: "#111111"
+            )
+        )
 
         XCTAssertEqual(draft.cancelledSettings(), original)
     }

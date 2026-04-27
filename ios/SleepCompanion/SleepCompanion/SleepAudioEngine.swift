@@ -29,7 +29,7 @@ final class SleepAudioEngine {
     func update(parameters: SoundParameters) {
         let parameters = parameters.clamped()
         renderBox?.update(parameters: parameters)
-        engine.mainMixerNode.outputVolume = Float(pow(parameters.level, 2) * 0.9)
+        engine.mainMixerNode.outputVolume = Float(SoundOutputMapping.mixerOutputVolume(level: parameters.level))
 
         eq.bands[0].frequency = Float(FrequencyMapping.logFrequency(value: parameters.lowCut, min: 20, max: 1_500))
         eq.bands[1].frequency = Float(FrequencyMapping.logFrequency(value: parameters.highCut, min: 1_200, max: 20_000))

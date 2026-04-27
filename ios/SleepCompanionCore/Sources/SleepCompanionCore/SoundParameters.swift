@@ -214,6 +214,13 @@ public struct SoundControlDefinition: Equatable, Identifiable, Sendable {
     }
 }
 
+public enum SoundOutputMapping {
+    public static func mixerOutputVolume(level: Double) -> Double {
+        let level = Swift.min(1, Swift.max(0, level))
+        return pow(level, 1.15)
+    }
+}
+
 public struct SoundParameters: Codable, Equatable, Sendable {
     public var level: Double
     public var greenMix: Double

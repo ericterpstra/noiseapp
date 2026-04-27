@@ -103,9 +103,9 @@ public enum SleepToneDSP {
                 + sin(state.humPhase * 3.97 + 1.1) * 0.05
 
             let bedMotion = 1 + parameters.fanDrift * (state.drift * 0.09 + motion * 0.06)
-            let airLevel = fanAirLevel(parameters.fanAir) * (1 - parameters.warmth * 0.12)
-            let rumbleLevel = fanRumbleLevel(parameters.fanRumble) * (1 + parameters.warmth * 0.08)
-            let humLevel = fanHumLevel(parameters.fanHum)
+            let airLevel = SleepToneDSP.fanAirLayerLevel(parameters.fanAir) * (1 - parameters.warmth * 0.12)
+            let rumbleLevel = SleepToneDSP.fanRumbleLayerLevel(parameters.fanRumble) * (1 + parameters.warmth * 0.08)
+            let humLevel = SleepToneDSP.fanHumLayerLevel(parameters.fanHum)
             let fanBed = (state.air2 * airLevel + state.rumble2 * rumbleLevel) * bedMotion + humWave * humLevel
 
             guard greenLevel > 0 else {
@@ -149,18 +149,6 @@ public enum SleepToneDSP {
             return (state.greenLow - state.greenFloor) * 0.86
         }
 
-        private static func fanAirLevel(_ fanAir: Double) -> Double {
-            0.12 + clamp(fanAir, min: 0, max: 1) * 0.22
-        }
-
-        private static func fanRumbleLevel(_ fanRumble: Double) -> Double {
-            pow(clamp(fanRumble, min: 0, max: 1), 1.1) * 1.05
-        }
-
-        private static func fanHumLevel(_ fanHum: Double) -> Double {
-            0.04 + clamp(fanHum, min: 0, max: 1) * 0.16
-        }
-
         private static func wrapPhase(_ phase: Double) -> Double {
             phase > 2 * .pi ? phase - 2 * .pi : phase
         }
@@ -173,6 +161,22 @@ public enum SleepToneDSP {
     public static func greenLayerLevel(_ greenMix: Double) -> Double {
         let mix = min(1, max(0, greenMix))
         return mix <= 0 ? 0 : pow(mix, 1.1) * 0.34
+    }
+
+    static func fanAirLayerLevel(_ fanAir: Double) -> Double {
+        pow(clamp(fanAir), 1.05) * 0.2
+    }
+
+    static func fanRumbleLayerLevel(_ fanRumble: Double) -> Double {
+        pow(clamp(fanRumble), 1.15) * 0.78
+    }
+
+    static func fanHumLayerLevel(_ fanHum: Double) -> Double {
+        pow(clamp(fanHum), 0.8) * 0.36
+    }
+
+    private static func clamp(_ value: Double) -> Double {
+        min(1, max(0, value))
     }
 }
 

@@ -10,6 +10,7 @@ final class AppSettingsStoreTests: XCTestCase {
         XCTAssertEqual(settings, .default)
         XCTAssertEqual(settings.clockFace.fontID, .rounded)
         XCTAssertEqual(settings.clockFace.colorHex, "#F8F2E7")
+        XCTAssertEqual(settings.clockFace.wakeBackgroundColorHex, "#FFFFFF")
         XCTAssertEqual(settings.clockFace.size, 132)
         XCTAssertEqual(settings.clockFace.luminosity, 0.42)
         XCTAssertEqual(settings.activeSoundPresetID, "deep-fan")
@@ -23,7 +24,8 @@ final class AppSettingsStoreTests: XCTestCase {
                 fontID: .monospaced,
                 colorHex: "#78DCE8",
                 size: 156,
-                luminosity: 0.18
+                luminosity: 0.18,
+                wakeBackgroundColorHex: "#243447"
             ),
             activeSoundPresetID: "soft-green",
             activeSoundParameters: SoundPresetDefinition.bundledPresets[1].parameters,
@@ -82,6 +84,41 @@ final class AppSettingsStoreTests: XCTestCase {
 
         XCTAssertEqual(settings.activeSoundPresetID, "deep-fan")
         XCTAssertNil(settings.activeSavedPresetID)
+        XCTAssertEqual(settings.clockFace.wakeBackgroundColorHex, "#FFFFFF")
+    }
+
+    func testClockFaceNormalizesColorHexValues() {
+        let settings = ClockFaceSettings(
+            fontID: .rounded,
+            colorHex: "78dce8",
+            size: 132,
+            luminosity: 0.42,
+            wakeBackgroundColorHex: "not-a-color"
+        )
+
+        XCTAssertEqual(settings.colorHex, "#78DCE8")
+        XCTAssertEqual(settings.wakeBackgroundColorHex, "#FFFFFF")
+        XCTAssertEqual(ClockColorHex.relativeLuminance("#000000"), 0, accuracy: 0.0001)
+        XCTAssertEqual(ClockColorHex.relativeLuminance("#FFFFFF"), 1, accuracy: 0.0001)
+        XCTAssertFalse(ClockColorHex.isLight("#101010"))
+        XCTAssertTrue(ClockColorHex.isLight("#F6F6F6"))
+    }
+
+    func testClockFontChoicesIncludeExpandedIpadOptions() {
+        XCTAssertEqual(
+            ClockFontID.allCases,
+            [
+                .rounded,
+                .monospaced,
+                .system,
+                .serif,
+                .avenirNextCondensed,
+                .dinAlternate,
+                .futura,
+                .gillSans,
+                .georgia
+            ]
+        )
     }
 
     private func temporarySettingsURL() -> URL {

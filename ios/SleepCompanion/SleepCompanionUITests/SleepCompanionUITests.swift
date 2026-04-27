@@ -28,6 +28,9 @@ final class SleepCompanionUITests: XCTestCase {
         XCTAssertTrue(app.buttons["noisePresetSaveAsButton"].exists)
         XCTAssertTrue(app.buttons["noisePresetDeleteButton"].exists)
         XCTAssertTrue(app.staticTexts["clockPreviewTime"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["clockFontPicker"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["clockTextColorPicker"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["wakeBackgroundColorPicker"].exists)
 
         app.buttons["settingsCancelButton"].tap()
 

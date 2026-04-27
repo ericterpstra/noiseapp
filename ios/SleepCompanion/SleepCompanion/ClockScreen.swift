@@ -61,7 +61,7 @@ private struct ClockFace: View {
 
     var body: some View {
         ZStack {
-            (isWakeActive ? Color.white : Color.black).ignoresSafeArea()
+            backgroundColor.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 HStack {
@@ -73,7 +73,11 @@ private struct ClockFace: View {
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(controlForeground)
-                    .background(.ultraThinMaterial, in: Circle())
+                    .background(Circle().fill(controlFill))
+                    .overlay(
+                        Circle()
+                            .stroke(controlStroke, lineWidth: 1)
+                    )
                     .accessibilityLabel("Settings")
                     .accessibilityIdentifier("settingsFlipButton")
                     .padding(.top, 28)
@@ -100,10 +104,10 @@ private struct ClockFace: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(controlForeground)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .background(controlFill, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .stroke(.white.opacity(isWakeActive ? 0.16 : 0.1), lineWidth: 1)
+                        .stroke(controlStroke, lineWidth: 1)
                 )
                 .accessibilityLabel(isPlaying ? "Pause sleep noise" : "Start sleep noise")
                 .accessibilityIdentifier("playPauseButton")
@@ -112,9 +116,13 @@ private struct ClockFace: View {
         }
     }
 
+    private var backgroundColor: Color {
+        isWakeActive ? Color(hex: settings.clockFace.wakeBackgroundColorHex) : .black
+    }
+
     private var clockForeground: Color {
         if isWakeActive {
-            return .black
+            return readableForeground(for: settings.clockFace.wakeBackgroundColorHex).opacity(0.88)
         }
 
         return Color(hex: settings.clockFace.colorHex)
@@ -122,7 +130,19 @@ private struct ClockFace: View {
     }
 
     private var controlForeground: Color {
-        isWakeActive ? .black.opacity(0.72) : .white.opacity(0.72)
+        controlBaseColor.opacity(isPlaying ? 0.18 : 0.72)
+    }
+
+    private var controlFill: Color {
+        controlBaseColor.opacity(isPlaying ? 0.025 : 0.1)
+    }
+
+    private var controlStroke: Color {
+        controlBaseColor.opacity(isPlaying ? 0.035 : 0.12)
+    }
+
+    private var controlBaseColor: Color {
+        isWakeActive ? readableForeground(for: settings.clockFace.wakeBackgroundColorHex) : .white
     }
 }
 
@@ -138,9 +158,6 @@ private struct SettingsWorkspace: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Settings")
                             .font(.system(size: 34, weight: .semibold))
-                        Text("Sound edits update the current sleep noise until you apply or cancel.")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
                     }
 
                     Spacer()
@@ -465,72 +482,68 @@ private struct ClockControlsPanel: View {
 
     var body: some View {
         Panel {
-            VStack(alignment: .leading, spacing: 18) {
-                Text("Clock Face")
-                    .font(.title2.weight(.semibold))
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text("Clock Face")
+                        .font(.title2.weight(.semibold))
 
-                clockPreview
+                    clockPreview
 
-                Picker("Font", selection: Binding(
-                    get: { draft.settings.clockFace.fontID },
-                    set: { updateClockFace(fontID: $0) }
-                )) {
-                    ForEach(ClockFontID.allCases, id: \.self) { fontID in
-                        Text(fontID.displayName).tag(fontID)
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Color")
-                        .font(.subheadline.weight(.medium))
-
-                    HStack {
-                        ForEach(ClockColorChoice.all, id: \.hex) { choice in
-                            Button {
-                                updateClockFace(colorHex: choice.hex)
-                            } label: {
-                                Circle()
-                                    .fill(Color(hex: choice.hex))
-                                    .frame(width: 30, height: 30)
-                                    .overlay(
-                                        Circle()
-                                            .stroke(.white.opacity(choice.hex == draft.settings.clockFace.colorHex ? 0.9 : 0.18),
-                                                    lineWidth: choice.hex == draft.settings.clockFace.colorHex ? 3 : 1)
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(choice.name)
+                    Picker("Font", selection: Binding(
+                        get: { draft.settings.clockFace.fontID },
+                        set: { updateClockFace(fontID: $0) }
+                    )) {
+                        ForEach(ClockFontID.allCases, id: \.self) { fontID in
+                            Text(fontID.displayName).tag(fontID)
                         }
                     }
+                    .accessibilityIdentifier("clockFontPicker")
+
+                    ClockColorControl(
+                        title: "Color",
+                        colorHex: draft.settings.clockFace.colorHex,
+                        fallbackHex: ClockColorHex.defaultText,
+                        accessibilityIdentifier: "clockTextColorPicker",
+                        onChange: { updateClockFace(colorHex: $0) }
+                    )
+
+                    ClockSlider(
+                        title: "Size",
+                        valueText: "\(Int(draft.settings.clockFace.size.rounded()))",
+                        value: Binding(
+                            get: { draft.settings.clockFace.size },
+                            set: { updateClockFace(size: $0) }
+                        ),
+                        range: 72...220,
+                        step: 1
+                    )
+
+                    ClockSlider(
+                        title: "Luminosity",
+                        valueText: "\(Int((draft.settings.clockFace.luminosity * 100).rounded()))%",
+                        value: Binding(
+                            get: { draft.settings.clockFace.luminosity },
+                            set: { updateClockFace(luminosity: $0) }
+                        ),
+                        range: 0.04...1,
+                        step: 0.01
+                    )
+
+                    Divider()
+                        .overlay(.white.opacity(0.18))
+
+                    DatePicker("Wake Time", selection: wakeDateBinding, displayedComponents: [.hourAndMinute])
+                        .datePickerStyle(.compact)
+
+                    ClockColorControl(
+                        title: "Wake Background",
+                        colorHex: draft.settings.clockFace.wakeBackgroundColorHex,
+                        fallbackHex: ClockColorHex.defaultWakeBackground,
+                        accessibilityIdentifier: "wakeBackgroundColorPicker",
+                        onChange: { updateClockFace(wakeBackgroundColorHex: $0) }
+                    )
                 }
-
-                ClockSlider(
-                    title: "Size",
-                    valueText: "\(Int(draft.settings.clockFace.size.rounded()))",
-                    value: Binding(
-                        get: { draft.settings.clockFace.size },
-                        set: { updateClockFace(size: $0) }
-                    ),
-                    range: 72...220,
-                    step: 1
-                )
-
-                ClockSlider(
-                    title: "Luminosity",
-                    valueText: "\(Int((draft.settings.clockFace.luminosity * 100).rounded()))%",
-                    value: Binding(
-                        get: { draft.settings.clockFace.luminosity },
-                        set: { updateClockFace(luminosity: $0) }
-                    ),
-                    range: 0.04...1,
-                    step: 0.01
-                )
-
-                Divider()
-                    .overlay(.white.opacity(0.18))
-
-                DatePicker("Wake Time", selection: wakeDateBinding, displayedComponents: [.hourAndMinute])
-                    .datePickerStyle(.compact)
+                .padding(.trailing, 4)
             }
         }
     }
@@ -575,7 +588,8 @@ private struct ClockControlsPanel: View {
         fontID: ClockFontID? = nil,
         colorHex: String? = nil,
         size: Double? = nil,
-        luminosity: Double? = nil
+        luminosity: Double? = nil,
+        wakeBackgroundColorHex: String? = nil
     ) {
         let current = draft.settings.clockFace
         model.setDraftClockFace(
@@ -583,9 +597,62 @@ private struct ClockControlsPanel: View {
                 fontID: fontID ?? current.fontID,
                 colorHex: colorHex ?? current.colorHex,
                 size: size ?? current.size,
-                luminosity: luminosity ?? current.luminosity
+                luminosity: luminosity ?? current.luminosity,
+                wakeBackgroundColorHex: wakeBackgroundColorHex ?? current.wakeBackgroundColorHex
             )
         )
+    }
+}
+
+private struct ClockColorControl: View {
+    private let swatchColumns = Array(repeating: GridItem(.fixed(30), spacing: 10), count: 8)
+    var title: String
+    var colorHex: String
+    var fallbackHex: String
+    var accessibilityIdentifier: String
+    var onChange: (String) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ColorPicker(
+                selection: Binding(
+                    get: { Color(hex: colorHex) },
+                    set: { onChange($0.hexString(fallback: fallbackHex)) }
+                ),
+                supportsOpacity: false
+            ) {
+                HStack {
+                    Text(title)
+                        .font(.subheadline.weight(.medium))
+                    Spacer()
+                    Text(colorHex)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .accessibilityIdentifier(accessibilityIdentifier)
+
+            LazyVGrid(columns: swatchColumns, alignment: .leading, spacing: 10) {
+                ForEach(ClockColorChoice.all, id: \.hex) { choice in
+                    Button {
+                        onChange(choice.hex)
+                    } label: {
+                        Circle()
+                            .fill(Color(hex: choice.hex))
+                            .frame(width: 30, height: 30)
+                            .overlay(
+                                Circle()
+                                    .stroke(
+                                        .white.opacity(choice.hex == colorHex ? 0.9 : 0.18),
+                                        lineWidth: choice.hex == colorHex ? 3 : 1
+                                    )
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(choice.name)
+                }
+            }
+        }
     }
 }
 
@@ -643,7 +710,21 @@ private func clockFont(for clockFace: ClockFaceSettings, scale: Double = 1) -> F
         return .system(size: size, weight: .medium, design: .default).monospacedDigit()
     case .serif:
         return .system(size: size, weight: .regular, design: .serif).monospacedDigit()
+    case .avenirNextCondensed:
+        return .custom("AvenirNextCondensed-DemiBold", size: size).monospacedDigit()
+    case .dinAlternate:
+        return .custom("DINAlternate-Bold", size: size).monospacedDigit()
+    case .futura:
+        return .custom("Futura-Medium", size: size).monospacedDigit()
+    case .gillSans:
+        return .custom("GillSans-Light", size: size).monospacedDigit()
+    case .georgia:
+        return .custom("Georgia", size: size).monospacedDigit()
     }
+}
+
+private func readableForeground(for backgroundHex: String) -> Color {
+    ClockColorHex.isLight(backgroundHex) ? .black : .white
 }
 
 private extension ClockFontID {
@@ -653,6 +734,11 @@ private extension ClockFontID {
         case .monospaced: "Monospaced"
         case .system: "System"
         case .serif: "Serif"
+        case .avenirNextCondensed: "Avenir Condensed"
+        case .dinAlternate: "DIN Alternate"
+        case .futura: "Futura"
+        case .gillSans: "Gill Sans"
+        case .georgia: "Georgia"
         }
     }
 }

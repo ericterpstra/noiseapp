@@ -2,6 +2,23 @@ import XCTest
 @testable import SleepCompanionCore
 
 final class SleepToneDSPTests: XCTestCase {
+    func testOutputLevelMappingUsesLouderBoundedCurve() {
+        XCTAssertEqual(SoundOutputMapping.mixerOutputVolume(level: -0.5), 0, accuracy: 0.0001)
+        XCTAssertEqual(SoundOutputMapping.mixerOutputVolume(level: 0), 0, accuracy: 0.0001)
+        XCTAssertEqual(SoundOutputMapping.mixerOutputVolume(level: 1), 1, accuracy: 0.0001)
+        XCTAssertEqual(SoundOutputMapping.mixerOutputVolume(level: 1.5), 1, accuracy: 0.0001)
+        XCTAssertGreaterThan(SoundOutputMapping.mixerOutputVolume(level: 0.75), pow(0.75, 2) * 0.9)
+        XCTAssertGreaterThan(SoundOutputMapping.mixerOutputVolume(level: 0.42), pow(0.42, 2) * 0.9)
+    }
+
+    func testFanAirHasNoFloorAndHumCanLeadFanBody() {
+        XCTAssertEqual(SleepToneDSP.fanAirLayerLevel(0), 0, accuracy: 0.0001)
+        XCTAssertEqual(SleepToneDSP.fanHumLayerLevel(0), 0, accuracy: 0.0001)
+        XCTAssertLessThan(SleepToneDSP.fanAirLayerLevel(1), SleepToneDSP.fanHumLayerLevel(1))
+        XCTAssertGreaterThan(SleepToneDSP.fanHumLayerLevel(1), SleepToneDSP.fanHumLayerLevel(0.25))
+        XCTAssertGreaterThan(SleepToneDSP.fanRumbleLayerLevel(1), SleepToneDSP.fanRumbleLayerLevel(0.25))
+    }
+
     func testGreenLayerCanBeDisabledOrBlended() {
         XCTAssertEqual(SleepToneDSP.greenLayerLevel(-0.5), 0)
         XCTAssertEqual(SleepToneDSP.greenLayerLevel(0), 0)
