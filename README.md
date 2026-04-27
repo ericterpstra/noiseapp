@@ -1,205 +1,123 @@
-# Noise Lab
+# Sleep Companion
 
-Noise Lab is a small browser-based noise generator built with the Web Audio API. It serves a single-page interface that can synthesize white, pink, brown, blue, violet, green, grey, and fan-like sleep noise in real time, then shape the result with filters, stereo width, and per-mode controls.
+Sleep Companion is a native SwiftUI iPad app for overnight sleep sound and clock display. It targets iPad landscape orientation, runs offline, generates procedural sleep noise with AVAudioEngine, and keeps the clock screen available as the primary experience.
 
-## Run Locally
+The old Web Audio proof of concept has been archived under `archive/web-poc/`. It remains useful for sound-design reference, but it is no longer the active product path or root workflow.
+
+## Run And Test
 
 Requirements:
-- Node.js 18+ is a reasonable baseline.
 
-Start the app:
+- Xcode with iOS Simulator support.
+- Swift toolchain compatible with the Xcode project.
 
-```bash
-npm start
-```
-
-Then open [http://localhost:8060](http://localhost:8060).
-
-Run the lightweight schema tests:
+Run the native core tests:
 
 ```bash
-npm test
+cd ios/SleepCompanionCore
+swift test
 ```
+
+Build the iPad app for the iOS Simulator:
+
+```bash
+xcodebuild \
+  -project ios/SleepCompanion/SleepCompanion.xcodeproj \
+  -scheme SleepCompanion \
+  -configuration Debug \
+  -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath /tmp/noiseapp-derived \
+  CODE_SIGNING_ALLOWED=NO \
+  build-for-testing
+```
+
+Run UI tests on an available iPad simulator:
+
+```bash
+xcodebuild \
+  -project ios/SleepCompanion/SleepCompanion.xcodeproj \
+  -scheme SleepCompanion \
+  -configuration Debug \
+  -destination 'platform=iOS Simulator,name=iPad (A16),OS=26.4.1' \
+  -derivedDataPath /tmp/noiseapp-derived \
+  CODE_SIGNING_ALLOWED=NO \
+  test-without-building
+```
+
+Run the app on the regular iPad simulator:
+
+```bash
+/bin/zsh -lc 'set -e; DEVICE="95138C28-2AD3-4D11-B539-FE7F0DD72F8F"; APP="/tmp/noiseapp-derived/Build/Products/Debug-iphonesimulator/SleepCompanion.app"; xcodebuild -project ios/SleepCompanion/SleepCompanion.xcodeproj -scheme SleepCompanion -configuration Debug -destination "platform=iOS Simulator,name=iPad (A16),OS=26.4.1" -derivedDataPath /tmp/noiseapp-derived CODE_SIGNING_ALLOWED=NO build; xcrun simctl boot "$DEVICE" 2>/dev/null || true; xcrun simctl bootstatus "$DEVICE"; open -a Simulator --args -CurrentDeviceUDID "$DEVICE"; xcrun simctl install "$DEVICE" "$APP"; xcrun simctl launch "$DEVICE" com.example.SleepCompanion'
+```
+
+The explicit `open -a Simulator` step brings the simulator window forward. `xcrun simctl launch` starts the app process, but it can do that without opening or focusing the Simulator GUI.
+
+## Test On A Physical iPad
+
+1. Open `ios/SleepCompanion/SleepCompanion.xcodeproj` in Xcode.
+2. Select the `SleepCompanion` scheme.
+3. Connect the iPad over USB or pair it wirelessly in Xcode's Devices and Simulators window.
+4. In the project target's Signing & Capabilities tab, choose your Apple Developer Team. Xcode will replace the placeholder bundle signing setup for local device builds.
+5. Select the connected iPad as the run destination.
+6. Hold the iPad in landscape, then click Run.
+7. Confirm launch behavior: clock opens in landscape, the display stays awake, the play button starts sleep noise, the gear flips to settings, `Cancel` returns without committing draft changes, and `Apply` commits changed clock/sound settings.
+8. For an overnight QA pass, plug the iPad into power, disable Focus/notifications as needed, start a sound, leave the app foregrounded, and verify audio stability, screen wake behavior, wake transition, and settings restore after relaunch.
+
+Physical-device builds require a valid signing team and a trusted developer certificate on the iPad. If iPadOS blocks the first launch, open Settings on the iPad and trust the developer profile shown for your Apple ID or team.
 
 ## Current Repo Layout
 
-- `server.mjs`: minimal static file server for the `public/` directory.
-- `public/index.html`: the current one-screen UI shell.
-- `public/app.js`: application bootstrap, state coordination, audio graph setup, and visualizers.
-- `public/app/audio/`: shared audio parameter helpers used by both the main-thread fallback and the AudioWorklet where practical.
-- `public/app/config/`: source definitions, control schema, and screen definitions used to mount the current UI.
-- `public/app/ui/`: shared UI helpers such as control mounting and value formatting.
-- `public/noise-generator.worklet.js`: AudioWorklet DSP implementation.
-- `public/styles.css`: styling for the current interface.
-- `test/`: Node test coverage for schema completeness and helper behavior.
+- `ios/SleepCompanionCore/`: Swift package for testable settings, wake-time logic, bundled sound presets, user-saved noise presets, frequency mapping, control schema, draft editing, and procedural DSP.
+- `ios/SleepCompanion/`: SwiftUI iPad app shell, AVAudioEngine playback, landscape-only project settings, and UI tests.
+- `archive/web-poc/`: historical Web Audio proof of concept, including its old Node server, static app, and Node tests.
 
-## How It Works Today
+## Native App Behavior
 
-1. `server.mjs` serves the static frontend.
-2. `public/app.js` mounts the page controls from config, owns the mutable app state, creates the audio graph, and draws the visualizers.
-3. The generator prefers `AudioWorkletNode` and falls back to `ScriptProcessorNode` when needed.
-4. Shared fan/green parameter helpers live in `public/app/audio/tone-shaping.js`; the core sample generation still exists in both the fallback and worklet.
-5. Green and grey are implemented as post-processing chains over a white-noise source; the other colors are synthesized directly.
+The app opens to a centered digital clock on a black background. The display stays awake while the clock is active, vertical swipes adjust clock luminosity, and the translucent bottom play button starts or pauses procedural sleep noise.
 
-## Review Summary
+Tapping the gear flips the clock over into a full-screen landscape settings workspace. The settings side edits a draft copy of the active settings:
 
-The app is small, readable, and easy to run. The first schema slice removes the old parallel edits across HTML, state defaults, DOM lookups, event bindings, labels, and source copy for the existing controls, but deeper source and audio changes still require coordinated edits in `public/app.js` and the worklet.
+- Left panel: noise selector, all procedural sound controls, and `Save`, `Save As`, and `Delete` actions for user-created noises.
+- Right panel: live clock-face preview, clock customization controls, and compact wake-time editing.
+- Sound edits update the currently playing sleep noise immediately while settings are open.
+- `Apply` commits the draft, persists settings, keeps the edited audio parameters, and flips back.
+- `Cancel` discards the draft and restores the prior active audio parameters.
 
-### Main Maintainability Risks
+User-created noise presets are local-only procedural sound parameter sets. They are stored separately from active settings in `presets.json`, can be selected from the noise menu, and do not include clock-face settings or wake time. Loading a saved noise changes only the settings draft until `Apply`.
 
-1. DSP logic is duplicated in `public/app.js` and `public/noise-generator.worklet.js`.
-   The pink, brown, fan, blue, and violet generators exist in two places. Shared fan gain/pitch constants now live in `public/app/audio/tone-shaping.js`, but the sample algorithms can still drift unless they are extracted or covered more deeply.
+Wake behavior is silent: when the wake time fires while the app is foregrounded, sleep noise stops, clock luminosity goes to full, and the background changes from black to white.
 
-2. Audio parameter mapping is still concentrated in `public/app.js`.
-   Controls now have a schema for defaults, parsing, formatting, and UI mounting, but audio parameter application still happens imperatively inside `NoiseLab.applyState()`.
+## Sound Controls
 
-3. The audio graph is encoded as imperative special cases.
-   `NoiseLab` owns the entire routing setup and switches behavior with mode-specific branches. This makes every new post-processing path more invasive than it needs to be.
+Swift now owns the procedural sound-control schema in `SleepCompanionCore`.
 
-4. UI state and audio routing are only partially decoupled.
-   Source copy and control visibility now live in `public/app/config/sources.js`, but audio behavior still depends on branches and parameter writes inside `NoiseLab`.
+Current controls:
 
-5. Automated verification is still lightweight.
-   The repo now has Node tests for source, control, and screen configuration, but it still lacks browser smoke coverage and DSP regression tests.
+- `level`
+- `greenMix`
+- `fanAir`
+- `fanRumble`
+- `fanHum`
+- `fanHumPitch`
+- `fanDrift`
+- `warmth`
+- `lowCut`
+- `highCut`
+- `width`
 
-6. `server.mjs` should tighten its path traversal guard.
-   The `startsWith(publicDir)` check is string-based and should eventually be replaced with a separator-aware `path.relative()` validation.
+When adding a new sound knob, add it to the native control schema, expose typed get/set behavior on `SoundParameters`, wire it through the settings workspace, and add focused Swift package coverage for defaults, formatting, and parameter mapping.
 
-## Recommended Direction
+## Archived Web PoC
 
-If the app is going to grow into multiple screens and more parameters, it should move toward a declarative architecture with one source of truth for controls and source definitions.
+The archived Web Audio app can still be inspected or run from `archive/web-poc/` if needed:
 
-### 1. Continue the Source Registry
-
-`public/app/config/sources.js` now defines the first source registry slice:
-
-- `id`
-- display name
-- description
-- which controls belong to it
-- whether it is a direct generator or a shaped variant through `generatorMode`
-- which current route it needs
-
-The next step is to move more routing/stage behavior into data so the registry also replaces scattered conditionals such as:
-- source descriptions
-- detail hints
-- special routing branches
-
-### 2. Extend the Control Schema
-
-`public/app/config/controls.js` now declares the current controls once with metadata such as:
-
-- `id`
-- label
-- input type
-- min/max/step
-- default value
-- parser
-- formatter
-
-The current screen renders and labels controls from that schema. Audio mapping functions and richer visibility predicates are still future work.
-
-### 3. Split `public/app.js` by Responsibility
-
-The current `public/app.js` is doing too much. A better target is:
-
-```text
-public/
-  app/
-    state/
-      store.js
-      defaults.js
-      selectors.js
-    config/
-      sources.js
-      controls.js
-      screens.js
-    ui/
-      mount-controls.js
-      mount-screens.js
-      copy.js
-      formatters.js
-    audio/
-      create-engine.js
-      graph-builder.js
-      routes.js
-      dsp-core.js
-      noise-generator.worklet.js
-    visualizers/
-      spectrum.js
-      scope.js
+```bash
+cd archive/web-poc
+npm test
+npm start
 ```
 
-A split like this lets the repo grow without turning one file into a permanent integration bottleneck.
-
-### 4. Make the Audio Graph Composable
-
-Instead of baking green and grey directly into `NoiseLab`, model the graph as reusable stages:
-
-- source generator
-- global shaping
-- mode-specific shaping
-- stereo stage
-- master gain
-- analyzers
-
-Then a source definition can say which stages it uses. Adding a new shaped source becomes configuration plus a focused stage implementation, not a series of edits across constructor state and reconnect logic.
-
-### 5. Keep DSP Single-Sourced
-
-The core sample-generation functions should live in one shared module that both the worklet and fallback path can use. If a browser constraint prevents literal sharing, keep one implementation authoritative and generate or mirror the fallback from it with strong tests.
-
-### 6. Add Lightweight Tests Before Refactoring Deeply
-
-Good first tests:
-
-- slider-to-frequency mapping
-- value formatting helpers
-- source registry completeness
-- control schema completeness
-- a smoke test that every declared control can be found or rendered
-- a smoke test that every source definition has copy and valid control membership
-
-This does not need a heavy framework. Even a small browser-oriented test setup will materially reduce refactor risk.
-
-## Suggested Refactor Order
-
-1. Extract pure helpers from `public/app.js` into small modules without changing behavior. Started with value formatters.
-2. Move source descriptions and per-source control membership into a shared source registry. Started in `public/app/config/sources.js`.
-3. Move control definitions into a control schema and render the current screen from that schema. Started in `public/app/config/controls.js`, `public/app/config/screens.js`, and `public/app/ui/mount-controls.js`.
-4. Move the remaining audio parameter mapping out of `NoiseLab.applyState()` and into one mapping layer. Started with `public/app/audio/tone-shaping.js`.
-5. Split `NoiseLab` into an audio engine and a UI/controller layer.
-6. Extract shared DSP code so the worklet and fallback stop diverging.
-7. Add route or tab support on top of the schema/store model.
-
-## What “Adding a New Knob” Should Eventually Look Like
-
-The desired workflow is:
-
-1. Add one control entry to the schema.
-2. Add or update one source definition to reference that control.
-3. Add one audio mapping function or graph stage if needed.
-4. Add one formatter or reuse an existing formatter.
-5. Add one test for the new behavior.
-
-If a future change still requires touching HTML, selectors, state defaults, bindings, labels, and routing by hand, the architecture has not been cleaned up enough.
-
-## What “Adding a New Screen” Should Eventually Look Like
-
-The desired workflow is:
-
-1. Add one screen definition describing title, copy, and which controls or cards it contains.
-2. Mount the screen through a screen registry or router.
-3. Reuse shared state and audio engine modules without duplicating control bindings.
-
-That keeps screen growth mostly in configuration and composition, not in copy-pasted event wiring.
-
-## Near-Term Priorities
-
-- Break `public/app.js` into smaller modules before adding more product surface area.
-- Stop duplicating DSP logic.
-- Extend the control schema into audio parameter mapping.
-- Add minimal automated checks before large refactors.
+Do not add new product behavior to the archived PoC. Future product work should happen in the Swift app unless there is an explicit decision to prototype separately.
 
 ## Contributor Guidance
 

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sleepy Pal</title>
+    <meta
+      name="description"
+      content="Real-time browser sleep tone generator with a fan-like bed, optional green-noise layer, and tone-shaping controls."
+    >
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="hero-copy">
+          <h1>Sleepy Pal</h1>
+        </div>
+        <div class="hero-actions">
+          <button id="powerButton" class="power-button" type="button">Start Audio</button>
+          <p id="audioStatus" class="status-pill">Idle</p>
+        </div>
+      </header>
+
+      <main class="dashboard">
+        <section class="control-panel" aria-labelledby="toneHeading">
+          <div class="section-heading">
+            <h2 id="toneHeading">Tone Controls</h2>
+          </div>
+
+          <div id="toneControls" class="control-grid"></div>
+        </section>
+
+      </main>
+    </div>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
