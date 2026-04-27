@@ -27,29 +27,26 @@ public enum SleepToneDSP {
 
         public mutating func nextSample(parameters: SoundParameters) -> StereoSample {
             let parameters = parameters.clamped()
+            let renderDrive = SoundOutputMapping.renderDrive(level: parameters.level)
             let leftWhite = random.nextSignedUnit()
             let rightWhite = random.nextSignedUnit()
-            let left = Self.clamp(
+            let left = Self.softLimited(
                 Self.generateSample(
                     state: &leftState,
                     white: leftWhite,
                     parameters: parameters,
                     random: &random,
                     sampleRate: sampleRate
-                ),
-                min: -1,
-                max: 1
+                ) * renderDrive
             )
-            let right = Self.clamp(
+            let right = Self.softLimited(
                 Self.generateSample(
                     state: &rightState,
                     white: rightWhite,
                     parameters: parameters,
                     random: &random,
                     sampleRate: sampleRate
-                ),
-                min: -1,
-                max: 1
+                ) * renderDrive
             )
 
             return StereoSample(left: left, right: right)
@@ -153,18 +150,18 @@ public enum SleepToneDSP {
             phase > 2 * .pi ? phase - 2 * .pi : phase
         }
 
-        private static func clamp(_ value: Double, min: Double, max: Double) -> Double {
-            Swift.min(max, Swift.max(min, value))
+        private static func softLimited(_ value: Double) -> Double {
+            tanh(value)
         }
     }
 
     public static func greenLayerLevel(_ greenMix: Double) -> Double {
         let mix = min(1, max(0, greenMix))
-        return mix <= 0 ? 0 : pow(mix, 1.1) * 0.34
+        return mix <= 0 ? 0 : pow(mix, 1.7) * 0.12
     }
 
     static func fanAirLayerLevel(_ fanAir: Double) -> Double {
-        pow(clamp(fanAir), 1.05) * 0.2
+        pow(clamp(fanAir), 0.95) * 0.58
     }
 
     static func fanRumbleLayerLevel(_ fanRumble: Double) -> Double {
@@ -172,7 +169,7 @@ public enum SleepToneDSP {
     }
 
     static func fanHumLayerLevel(_ fanHum: Double) -> Double {
-        pow(clamp(fanHum), 0.8) * 0.36
+        pow(clamp(fanHum), 0.78) * 1.15
     }
 
     private static func clamp(_ value: Double) -> Double {

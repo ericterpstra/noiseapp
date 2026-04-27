@@ -216,8 +216,17 @@ public struct SoundControlDefinition: Equatable, Identifiable, Sendable {
 
 public enum SoundOutputMapping {
     public static func mixerOutputVolume(level: Double) -> Double {
-        let level = Swift.min(1, Swift.max(0, level))
+        let level = clampedLevel(level)
         return pow(level, 1.15)
+    }
+
+    public static func renderDrive(level: Double) -> Double {
+        let level = clampedLevel(level)
+        return 1 + pow(level, 1.35) * 1.9
+    }
+
+    private static func clampedLevel(_ level: Double) -> Double {
+        Swift.min(1, Swift.max(0, level))
     }
 }
 
