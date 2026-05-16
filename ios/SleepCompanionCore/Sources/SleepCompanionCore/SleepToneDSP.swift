@@ -27,29 +27,26 @@ public enum SleepToneDSP {
 
         public mutating func nextSample(parameters: SoundParameters) -> StereoSample {
             let parameters = parameters.clamped()
-            let renderDrive = SoundOutputMapping.renderDrive(level: parameters.level)
+            let renderDrive = SoundOutputMapping.renderDrive(drive: parameters.drive)
             let leftWhite = random.nextSignedUnit()
             let rightWhite = random.nextSignedUnit()
-            let left = Self.softLimited(
-                Self.generateSample(
-                    state: &leftState,
-                    white: leftWhite,
-                    parameters: parameters,
-                    random: &random,
-                    sampleRate: sampleRate
-                ) * renderDrive
-            )
-            let right = Self.softLimited(
-                Self.generateSample(
-                    state: &rightState,
-                    white: rightWhite,
-                    parameters: parameters,
-                    random: &random,
-                    sampleRate: sampleRate
-                ) * renderDrive
-            )
+            let left = Self.generateSample(
+                state: &leftState,
+                white: leftWhite,
+                parameters: parameters,
+                random: &random,
+                sampleRate: sampleRate
+            ) * renderDrive
+            let right = Self.generateSample(
+                state: &rightState,
+                white: rightWhite,
+                parameters: parameters,
+                random: &random,
+                sampleRate: sampleRate
+            ) * renderDrive
+            let widened = Self.applyStereoWidth(left: left, right: right, width: parameters.width)
 
-            return StereoSample(left: left, right: right)
+            return StereoSample(left: Self.softLimited(widened.left), right: Self.softLimited(widened.right))
         }
 
         private static func generateSample(
@@ -59,11 +56,12 @@ public enum SleepToneDSP {
             random: inout SeededRandom,
             sampleRate: Double
         ) -> Double {
+            state.updateFilterCoefficientsIfNeeded(parameters: parameters, sampleRate: sampleRate)
             let pink = generatePinkSample(state: &state, white: white)
             let brown = generateBrownSample(state: &state, white: white)
             let greenLevel = SleepToneDSP.greenLayerLevel(parameters.greenMix)
 
-            let airSource = pink * (1 - Constants.fanAirBrownMix) + brown * Constants.fanAirBrownMix
+            let airSource = pink * (1 - parameters.airTexture) + brown * parameters.airTexture
             state.air1 += state.airCoeff1 * (airSource - state.air1)
             state.air2 += state.airCoeff2 * (state.air1 - state.air2)
 
@@ -78,11 +76,12 @@ public enum SleepToneDSP {
             }
 
             state.drift += 0.00005 * (state.driftTarget - state.drift)
+            let movementRateScale = SoundFilterMapping.movementRateScale(speed: parameters.movementSpeed)
             state.motionPhase = wrapPhase(
-                state.motionPhase + (2 * .pi * (0.07 + parameters.fanDrift * 0.05)) / sampleRate
+                state.motionPhase + (2 * .pi * (0.07 + parameters.fanDrift * 0.05) * movementRateScale) / sampleRate
             )
             state.flutterPhase = wrapPhase(
-                state.flutterPhase + (2 * .pi * (0.17 + parameters.fanDrift * 0.11)) / sampleRate
+                state.flutterPhase + (2 * .pi * (0.17 + parameters.fanDrift * 0.11) * movementRateScale) / sampleRate
             )
 
             let motion =
@@ -94,10 +93,11 @@ public enum SleepToneDSP {
             )
 
             state.humPhase = wrapPhase(state.humPhase + (2 * .pi * humFrequency) / sampleRate)
+            let harmonicScale = SoundFilterMapping.humHarmonicScale(harmonics: parameters.humHarmonics)
             let humWave =
                 sin(state.humPhase) * 0.74
-                + sin(state.humPhase * 2.01 + 0.4) * 0.18
-                + sin(state.humPhase * 3.97 + 1.1) * 0.05
+                + sin(state.humPhase * 2.01 + 0.4) * 0.18 * harmonicScale
+                + sin(state.humPhase * 3.97 + 1.1) * 0.05 * harmonicScale
 
             let bedMotion = 1 + parameters.fanDrift * (state.drift * 0.09 + motion * 0.06)
             let airLevel = SleepToneDSP.fanAirLayerLevel(parameters.fanAir) * (1 - parameters.warmth * 0.12)
@@ -150,6 +150,13 @@ public enum SleepToneDSP {
             phase > 2 * .pi ? phase - 2 * .pi : phase
         }
 
+        private static func applyStereoWidth(left: Double, right: Double, width: Double) -> StereoSample {
+            let width = min(2, max(0, width))
+            let mid = (left + right) * 0.5
+            let side = (left - right) * 0.5 * width
+            return StereoSample(left: mid + side, right: mid - side)
+        }
+
         private static func softLimited(_ value: Double) -> Double {
             tanh(value)
         }
@@ -175,10 +182,6 @@ public enum SleepToneDSP {
     private static func clamp(_ value: Double) -> Double {
         min(1, max(0, value))
     }
-}
-
-private enum Constants {
-    static let fanAirBrownMix = 0.08
 }
 
 private struct ChannelState: Sendable {
@@ -209,6 +212,9 @@ private struct ChannelState: Sendable {
     var rumbleCoeff2: Double
     var greenLowCoeff: Double
     var greenFloorCoeff: Double
+    var airColor: Double = 0.5
+    var rumbleColor: Double = 0.5
+    var greenColor: Double = 0.5
 
     init(sampleRate: Double, random: inout SeededRandom) {
         humPhase = random.nextUnit() * 2 * .pi
@@ -216,12 +222,38 @@ private struct ChannelState: Sendable {
         flutterPhase = random.nextUnit() * 2 * .pi
         driftCounter = Int(sampleRate * (0.35 + random.nextUnit() * 0.4))
         phaseOffset = random.nextUnit() * 2 * .pi
-        airCoeff1 = Self.coefficient(forCutoff: 700, sampleRate: sampleRate)
-        airCoeff2 = Self.coefficient(forCutoff: 420, sampleRate: sampleRate)
-        rumbleCoeff1 = Self.coefficient(forCutoff: 115, sampleRate: sampleRate)
-        rumbleCoeff2 = Self.coefficient(forCutoff: 48, sampleRate: sampleRate)
-        greenLowCoeff = Self.coefficient(forCutoff: 1_800, sampleRate: sampleRate)
-        greenFloorCoeff = Self.coefficient(forCutoff: 220, sampleRate: sampleRate)
+        let airCutoffs = SoundFilterMapping.airCutoffs(color: airColor)
+        let rumbleCutoffs = SoundFilterMapping.rumbleCutoffs(color: rumbleColor)
+        let greenCutoffs = SoundFilterMapping.greenBandCutoffs(color: greenColor)
+        airCoeff1 = Self.coefficient(forCutoff: airCutoffs.primary, sampleRate: sampleRate)
+        airCoeff2 = Self.coefficient(forCutoff: airCutoffs.secondary, sampleRate: sampleRate)
+        rumbleCoeff1 = Self.coefficient(forCutoff: rumbleCutoffs.primary, sampleRate: sampleRate)
+        rumbleCoeff2 = Self.coefficient(forCutoff: rumbleCutoffs.secondary, sampleRate: sampleRate)
+        greenLowCoeff = Self.coefficient(forCutoff: greenCutoffs.high, sampleRate: sampleRate)
+        greenFloorCoeff = Self.coefficient(forCutoff: greenCutoffs.low, sampleRate: sampleRate)
+    }
+
+    mutating func updateFilterCoefficientsIfNeeded(parameters: SoundParameters, sampleRate: Double) {
+        if airColor != parameters.airColor {
+            airColor = parameters.airColor
+            let cutoffs = SoundFilterMapping.airCutoffs(color: airColor)
+            airCoeff1 = Self.coefficient(forCutoff: cutoffs.primary, sampleRate: sampleRate)
+            airCoeff2 = Self.coefficient(forCutoff: cutoffs.secondary, sampleRate: sampleRate)
+        }
+
+        if rumbleColor != parameters.rumbleColor {
+            rumbleColor = parameters.rumbleColor
+            let cutoffs = SoundFilterMapping.rumbleCutoffs(color: rumbleColor)
+            rumbleCoeff1 = Self.coefficient(forCutoff: cutoffs.primary, sampleRate: sampleRate)
+            rumbleCoeff2 = Self.coefficient(forCutoff: cutoffs.secondary, sampleRate: sampleRate)
+        }
+
+        if greenColor != parameters.greenColor {
+            greenColor = parameters.greenColor
+            let cutoffs = SoundFilterMapping.greenBandCutoffs(color: greenColor)
+            greenLowCoeff = Self.coefficient(forCutoff: cutoffs.high, sampleRate: sampleRate)
+            greenFloorCoeff = Self.coefficient(forCutoff: cutoffs.low, sampleRate: sampleRate)
+        }
     }
 
     private static func coefficient(forCutoff frequency: Double, sampleRate: Double) -> Double {

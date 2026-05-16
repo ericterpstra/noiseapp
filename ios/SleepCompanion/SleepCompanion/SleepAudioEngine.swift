@@ -33,8 +33,8 @@ final class SleepAudioEngine {
 
         eq.bands[0].frequency = Float(FrequencyMapping.logFrequency(value: parameters.lowCut, min: 20, max: 1_500))
         eq.bands[1].frequency = Float(FrequencyMapping.logFrequency(value: parameters.highCut, min: 1_200, max: 20_000))
-        eq.bands[2].gain = Float(parameters.warmth * 5)
-        eq.bands[3].gain = Float(parameters.warmth * -8)
+        eq.bands[2].gain = Float(parameters.bassBoost * 5)
+        eq.bands[3].gain = Float(parameters.trebleDamping * -8)
     }
 
     private func configureAudioSession() throws {

@@ -220,23 +220,20 @@ private struct SoundControlsPanel: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
-                        ForEach(SoundControlGroup.allCases, id: \.self) { group in
-                            let definitions = SoundControlDefinition.definitions(in: group)
-                            if !definitions.isEmpty {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text(group.title)
-                                        .font(.headline)
-                                        .foregroundStyle(.white.opacity(0.86))
+                        ForEach(manualSoundControlSections) { section in
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text(section.group.title)
+                                    .font(.headline)
+                                    .foregroundStyle(.white.opacity(0.86))
 
-                                    ForEach(definitions) { definition in
-                                        SoundControlRow(
-                                            definition: definition,
-                                            parameters: draft.settings.activeSoundParameters,
-                                            onEdit: {
-                                                hasEditedSound = true
-                                            }
-                                        )
-                                    }
+                                ForEach(section.parameterIDs, id: \.self) { parameterID in
+                                    SoundControlRow(
+                                        definition: SoundControlDefinition.definition(for: parameterID),
+                                        parameters: draft.settings.activeSoundParameters,
+                                        onEdit: {
+                                            hasEditedSound = true
+                                        }
+                                    )
                                 }
                             }
                         }
@@ -442,6 +439,33 @@ private struct SoundControlsPanel: View {
         hasEditedSound = false
     }
 }
+
+private struct ManualSoundControlSection: Identifiable {
+    var group: SoundControlGroup
+    var parameterIDs: [SoundParameterID]
+
+    var id: SoundControlGroup { group }
+}
+
+private let manualSoundControlSections: [ManualSoundControlSection] = [
+    ManualSoundControlSection(group: .output, parameterIDs: [.level, .drive, .width]),
+    ManualSoundControlSection(
+        group: .fanBody,
+        parameterIDs: [
+            .fanAir,
+            .airTexture,
+            .airColor,
+            .fanRumble,
+            .rumbleColor,
+            .fanHum,
+            .fanHumPitch,
+            .humHarmonics
+        ]
+    ),
+    ManualSoundControlSection(group: .movement, parameterIDs: [.fanDrift, .movementSpeed]),
+    ManualSoundControlSection(group: .tone, parameterIDs: [.warmth, .bassBoost, .trebleDamping, .lowCut, .highCut]),
+    ManualSoundControlSection(group: .greenLayer, parameterIDs: [.greenMix, .greenColor])
+]
 
 private struct SoundControlRow: View {
     @EnvironmentObject private var model: SleepAppModel
