@@ -7,11 +7,26 @@ final class SleepToneDSPTests: XCTestCase {
         XCTAssertEqual(SoundOutputMapping.mixerOutputVolume(level: 0), 0, accuracy: 0.0001)
         XCTAssertEqual(SoundOutputMapping.mixerOutputVolume(level: 1), 1, accuracy: 0.0001)
         XCTAssertEqual(SoundOutputMapping.mixerOutputVolume(level: 1.5), 1, accuracy: 0.0001)
-        XCTAssertEqual(SoundOutputMapping.renderDrive(level: -0.5), 1, accuracy: 0.0001)
-        XCTAssertEqual(SoundOutputMapping.renderDrive(level: 1.5), SoundOutputMapping.renderDrive(level: 1), accuracy: 0.0001)
-        XCTAssertGreaterThanOrEqual(SoundOutputMapping.renderDrive(level: 1), 2)
+        XCTAssertEqual(SoundOutputMapping.renderDrive(drive: -0.5), 1, accuracy: 0.0001)
+        XCTAssertEqual(SoundOutputMapping.renderDrive(drive: 1.5), SoundOutputMapping.renderDrive(drive: 1), accuracy: 0.0001)
+        XCTAssertGreaterThanOrEqual(SoundOutputMapping.renderDrive(drive: 1), 2)
         XCTAssertGreaterThan(SoundOutputMapping.mixerOutputVolume(level: 0.75), pow(0.75, 2) * 0.9)
         XCTAssertGreaterThan(SoundOutputMapping.mixerOutputVolume(level: 0.42), pow(0.42, 2) * 0.9)
+    }
+
+    func testColorMappingsPreserveExistingDefaultCutoffs() {
+        let air = SoundFilterMapping.airCutoffs(color: 0.5)
+        let rumble = SoundFilterMapping.rumbleCutoffs(color: 0.5)
+        let green = SoundFilterMapping.greenBandCutoffs(color: 0.5)
+
+        XCTAssertEqual(air.primary, 700, accuracy: 0.0001)
+        XCTAssertEqual(air.secondary, 420, accuracy: 0.0001)
+        XCTAssertEqual(rumble.primary, 115, accuracy: 0.0001)
+        XCTAssertEqual(rumble.secondary, 48, accuracy: 0.0001)
+        XCTAssertEqual(green.low, 220, accuracy: 0.1)
+        XCTAssertEqual(green.high, 1_800, accuracy: 0.0001)
+        XCTAssertEqual(SoundFilterMapping.movementRateScale(speed: 0.5), 1, accuracy: 0.0001)
+        XCTAssertEqual(SoundFilterMapping.humHarmonicScale(harmonics: 0.5), 1, accuracy: 0.0001)
     }
 
     func testFanAirHasNoFloorAndHumCanLeadFanBody() {
@@ -29,18 +44,28 @@ final class SleepToneDSPTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(SleepToneDSP.fanHumLayerLevel(0.52), 0.4)
     }
 
-    func testRendererUsesOutputLevelAsSourceDrive() {
+    func testRendererUsesDriveAsSourceDensity() {
         var mediumRenderer = SleepToneDSP.ChannelRenderer(sampleRate: 48_000, seed: 8675309)
         var fullRenderer = SleepToneDSP.ChannelRenderer(sampleRate: 48_000, seed: 8675309)
         var mediumParameters = SoundPresetDefinition.defaultPreset.parameters
         var fullParameters = SoundPresetDefinition.defaultPreset.parameters
-        mediumParameters.level = 0.5
-        fullParameters.level = 1
+        mediumParameters.drive = 0.5
+        fullParameters.drive = 1
 
         let mediumRMS = stereoRMS(renderer: &mediumRenderer, parameters: mediumParameters)
         let fullRMS = stereoRMS(renderer: &fullRenderer, parameters: fullParameters)
 
         XCTAssertGreaterThan(fullRMS, mediumRMS * 1.3)
+    }
+
+    func testStereoWidthCanCollapseToMono() {
+        var renderer = SleepToneDSP.ChannelRenderer(sampleRate: 48_000, seed: 2468)
+        var parameters = SoundPresetDefinition.defaultPreset.parameters
+        parameters.width = 0
+
+        let samples = (0..<16).map { _ in renderer.nextSample(parameters: parameters) }
+
+        XCTAssertTrue(samples.allSatisfy { abs($0.left - $0.right) < 0.0001 })
     }
 
     func testGreenLayerCanBeDisabledOrBlended() {

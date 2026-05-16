@@ -85,6 +85,15 @@ final class AppSettingsStoreTests: XCTestCase {
         XCTAssertEqual(settings.activeSoundPresetID, "deep-fan")
         XCTAssertNil(settings.activeSavedPresetID)
         XCTAssertEqual(settings.clockFace.wakeBackgroundColorHex, "#FFFFFF")
+        XCTAssertEqual(settings.activeSoundParameters.drive, 0.42, accuracy: 0.0001)
+        XCTAssertEqual(settings.activeSoundParameters.airTexture, 0.08, accuracy: 0.0001)
+        XCTAssertEqual(settings.activeSoundParameters.airColor, 0.5, accuracy: 0.0001)
+        XCTAssertEqual(settings.activeSoundParameters.greenColor, 0.5, accuracy: 0.0001)
+        XCTAssertEqual(settings.activeSoundParameters.rumbleColor, 0.5, accuracy: 0.0001)
+        XCTAssertEqual(settings.activeSoundParameters.humHarmonics, 0.5, accuracy: 0.0001)
+        XCTAssertEqual(settings.activeSoundParameters.movementSpeed, 0.5, accuracy: 0.0001)
+        XCTAssertEqual(settings.activeSoundParameters.bassBoost, 0.35, accuracy: 0.0001)
+        XCTAssertEqual(settings.activeSoundParameters.trebleDamping, 0.35, accuracy: 0.0001)
     }
 
     func testClockFaceNormalizesColorHexValues() {

@@ -94,16 +94,25 @@ Swift now owns the procedural sound-control schema in `SleepCompanionCore`.
 Current controls:
 
 - `level`
+- `drive`
+- `width`
 - `greenMix`
+- `greenColor`
 - `fanAir`
+- `airTexture`
+- `airColor`
 - `fanRumble`
+- `rumbleColor`
 - `fanHum`
 - `fanHumPitch`
+- `humHarmonics`
 - `fanDrift`
+- `movementSpeed`
 - `warmth`
+- `bassBoost`
+- `trebleDamping`
 - `lowCut`
 - `highCut`
-- `width`
 
 When adding a new sound knob, add it to the native control schema, expose typed get/set behavior on `SoundParameters`, wire it through the settings workspace, and add focused Swift package coverage for defaults, formatting, and parameter mapping.
 

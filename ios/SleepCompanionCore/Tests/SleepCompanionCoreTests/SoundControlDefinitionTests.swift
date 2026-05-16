@@ -22,16 +22,25 @@ final class SoundControlDefinitionTests: XCTestCase {
 
     func testControlsAreGroupedForTheLandscapeSettingsWorkspace() {
         XCTAssertEqual(SoundControlDefinition.definition(for: .level).group, .output)
+        XCTAssertEqual(SoundControlDefinition.definition(for: .drive).group, .output)
         XCTAssertEqual(SoundControlDefinition.definition(for: .width).group, .output)
+        XCTAssertEqual(SoundControlDefinition.definition(for: .greenMix).group, .greenLayer)
+        XCTAssertEqual(SoundControlDefinition.definition(for: .greenColor).group, .greenLayer)
         XCTAssertEqual(SoundControlDefinition.definition(for: .fanAir).group, .fanBody)
+        XCTAssertEqual(SoundControlDefinition.definition(for: .airTexture).group, .fanBody)
+        XCTAssertEqual(SoundControlDefinition.definition(for: .airColor).group, .fanBody)
         XCTAssertEqual(SoundControlDefinition.definition(for: .fanRumble).group, .fanBody)
+        XCTAssertEqual(SoundControlDefinition.definition(for: .rumbleColor).group, .fanBody)
         XCTAssertEqual(SoundControlDefinition.definition(for: .fanHum).group, .fanBody)
         XCTAssertEqual(SoundControlDefinition.definition(for: .fanHumPitch).group, .fanBody)
+        XCTAssertEqual(SoundControlDefinition.definition(for: .humHarmonics).group, .fanBody)
         XCTAssertEqual(SoundControlDefinition.definition(for: .fanDrift).group, .movement)
+        XCTAssertEqual(SoundControlDefinition.definition(for: .movementSpeed).group, .movement)
         XCTAssertEqual(SoundControlDefinition.definition(for: .warmth).group, .tone)
+        XCTAssertEqual(SoundControlDefinition.definition(for: .bassBoost).group, .tone)
+        XCTAssertEqual(SoundControlDefinition.definition(for: .trebleDamping).group, .tone)
         XCTAssertEqual(SoundControlDefinition.definition(for: .lowCut).group, .tone)
         XCTAssertEqual(SoundControlDefinition.definition(for: .highCut).group, .tone)
-        XCTAssertEqual(SoundControlDefinition.definition(for: .greenMix).group, .greenLayer)
     }
 
     func testSoundParametersCanBeReadAndWrittenByParameterID() {
@@ -48,8 +57,10 @@ final class SoundControlDefinitionTests: XCTestCase {
 
     func testControlFormattingMatchesProofOfConceptLabels() {
         XCTAssertEqual(SoundControlDefinition.definition(for: .level).formatValue(0.42), "42%")
+        XCTAssertEqual(SoundControlDefinition.definition(for: .drive).formatValue(0.42), "42%")
         XCTAssertEqual(SoundControlDefinition.definition(for: .greenMix).formatValue(0), "Off")
         XCTAssertEqual(SoundControlDefinition.definition(for: .greenMix).formatValue(0.25), "25%")
+        XCTAssertEqual(SoundControlDefinition.definition(for: .airTexture).formatValue(0.08), "8%")
         XCTAssertEqual(SoundControlDefinition.definition(for: .fanHumPitch).formatValue(92), "92 Hz")
         XCTAssertEqual(SoundControlDefinition.definition(for: .lowCut).formatValue(0), "20 Hz")
         XCTAssertEqual(SoundControlDefinition.definition(for: .highCut).formatValue(1), "20 kHz")
